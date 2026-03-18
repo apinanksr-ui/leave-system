@@ -668,6 +668,26 @@
 
 <script>
 // ============================================================
+// API CONFIG
+// ============================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec';
+
+async function apiGet(params) {
+  const qs = Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const res = await fetch(API_URL + '?' + qs);
+  return res.json();
+}
+async function apiPost(data) {
+  // ใช้ text/plain เพื่อหลีกเลี่ยง CORS preflight ของ Google Apps Script
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+// ============================================================
 // DATABASE
 // ============================================================
 const adminDB = {

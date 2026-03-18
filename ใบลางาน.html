@@ -751,9 +751,10 @@
     return res.json();
   }
   async function apiPost(data) {
+    // ใช้ text/plain เพื่อหลีกเลี่ยง CORS preflight ของ Google Apps Script
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(data)
     });
     return res.json();
