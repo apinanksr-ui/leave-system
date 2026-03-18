@@ -59,7 +59,8 @@ var COL_MAP_LEAVE = {
   'ผลการพิจารณา L1':     'l1Decision',
   'ผลการพิจารณา L2':     'l2Decision',
   'ความเห็น L1':         'l1Comment',
-  'ความเห็น L2':         'l2Comment'
+  'ความเห็น L2':         'l2Comment',
+  'ไฟล์แนบ':             'attachmentUrl'
 };
 
 var COL_MAP_QUOTA = {
@@ -275,7 +276,6 @@ function submitLeave(obj) {
   var hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
 
   // สร้าง leaveId อัตโนมัติ
-  var lastRow = sh.getLastRow();
   obj.leaveId    = 'LV' + String(Date.now()).slice(-6);
   obj.submitDate = new Date().toLocaleDateString('th-TH');
   obj.status     = 'pending';
@@ -283,6 +283,32 @@ function submitLeave(obj) {
   obj.l2Decision = '';
   obj.l1Comment  = '';
   obj.l2Comment  = '';
+
+  // ── บันทึกไฟล์แนบลง Google Drive (ถ้ามี) ──────────────────
+  if (obj.attachmentBase64 && obj.attachmentName) {
+    try {
+      var b64Data = obj.attachmentBase64;
+      // ตัด prefix "data:image/jpeg;base64," ออก
+      var base64String = b64Data.indexOf(',') !== -1 ? b64Data.split(',')[1] : b64Data;
+      var mimeType     = b64Data.indexOf(',') !== -1 ? b64Data.split(';')[0].replace('data:','') : 'application/octet-stream';
+      var decoded      = Utilities.base64Decode(base64String);
+      var blob         = Utilities.newBlob(decoded, mimeType, obj.attachmentName);
+
+      // หา/สร้างโฟลเดอร์ "LeaveAttachments" ใน Drive
+      var folderName   = 'LeaveAttachments_PlanConsultants';
+      var folders      = DriveApp.getFoldersByName(folderName);
+      var folder       = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+
+      var file         = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      obj.attachmentUrl = file.getUrl();
+    } catch(e) {
+      obj.attachmentUrl = 'อัปโหลดไม่สำเร็จ: ' + e.message;
+    }
+    // ลบ base64 ออกเพื่อไม่ให้ข้อมูลหนักเกิน
+    delete obj.attachmentBase64;
+    delete obj.attachmentName;
+  }
 
   var row = hdr.map(function(col) { return obj[col] !== undefined ? obj[col] : ''; });
   sh.appendRow(row);
