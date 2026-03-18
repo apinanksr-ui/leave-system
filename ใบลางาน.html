@@ -630,7 +630,7 @@
 
         <!-- เอกสารแนบ -->
         <div class="field" style="margin-bottom:16px;">
-          <label>เอกสารแนบ</label>
+          <label>เอกสารแนบ (ระบุประเภท)</label>
           <div class="checkbox-group" id="docGroup">
             <label class="check-item" onclick="toggleCheck(this)">
               <input type="checkbox" name="docs" value="ใบรับรองแพทย์" /> 🏥 ใบรับรองแพทย์
@@ -642,6 +642,50 @@
               <input type="checkbox" name="docs" value="อื่นๆ" /> 📎 อื่น ๆ
             </label>
           </div>
+        </div>
+
+        <!-- อัปโหลดไฟล์ -->
+        <div class="field" style="margin-bottom:16px;">
+          <label>อัปโหลดไฟล์แนบ
+            <span style="font-size:11px;color:#9aa5b4;font-weight:400;">(JPG / PDF สูงสุด 5 MB)</span>
+          </label>
+
+          <!-- Drop Zone -->
+          <div id="fileDropZone"
+            style="border:2px dashed #d1d9e0; border-radius:10px; padding:20px 16px;
+                   text-align:center; cursor:pointer; transition:all .2s; background:#f7f9fb;"
+            onclick="document.getElementById('fileInput').click()"
+            ondragover="event.preventDefault(); this.style.borderColor='#1a3a6e'; this.style.background='#eef2f7';"
+            ondragleave="this.style.borderColor='#d1d9e0'; this.style.background='#f7f9fb';"
+            ondrop="handleFileDrop(event)">
+            <div style="font-size:28px; margin-bottom:6px;">📎</div>
+            <div style="font-size:13px; color:#6b7280;">คลิกหรือลากไฟล์มาวางที่นี่</div>
+            <div style="font-size:11px; color:#9aa5b4; margin-top:4px;">รองรับ .jpg .jpeg .pdf ขนาดไม่เกิน 5 MB</div>
+          </div>
+
+          <!-- Hidden input -->
+          <input type="file" id="fileInput" accept=".jpg,.jpeg,.pdf"
+            style="display:none;" onchange="handleFileSelect(this)" />
+
+          <!-- Preview -->
+          <div id="filePreview" style="display:none; margin-top:10px;
+            background:#eef2f7; border:1px solid #d1d9e0; border-radius:8px;
+            padding:10px 14px; display:none; align-items:center; gap:10px;">
+            <span id="fileIcon" style="font-size:22px;">📄</span>
+            <div style="flex:1; min-width:0;">
+              <div id="fileName" style="font-size:13px; font-weight:600; color:#1a3a6e;
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+              <div id="fileSize" style="font-size:11px; color:#9aa5b4;"></div>
+            </div>
+            <button type="button" onclick="clearFile()"
+              style="background:#f8d7da; border:none; border-radius:6px; padding:4px 10px;
+                     font-size:12px; color:#842029; cursor:pointer;">✕ ลบ</button>
+          </div>
+
+          <!-- Error -->
+          <div id="fileError" style="display:none; margin-top:6px; font-size:12px;
+            color:#dc2626; background:#fef2f2; border:1px solid #fca5a5;
+            border-radius:6px; padding:6px 12px;"></div>
         </div>
 
         <!-- ที่พัก & โทร -->
@@ -673,7 +717,13 @@
         <div class="ticket-id" id="ticketId">LA-00000</div>
         <p style="font-size:13px; color:#6b7280;">สถานะจะอัปเดตเมื่อผู้บังคับบัญชาพิจารณาแล้ว</p>
         <br/>
-        <button class="btn btn-secondary" onclick="location.reload()">📝 ยื่นใบลาใหม่</button>
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="location.reload()">📝 ยื่นใบลาใหม่</button>
+          <button class="btn btn-primary" onclick="closeDone()"
+            style="background:#1a3a6e; min-width:140px;">
+            ✅ เสร็จสิ้น / ปิดหน้าจอ
+          </button>
+        </div>
       </div>
 
     </div><!-- /form-body -->
@@ -784,7 +834,7 @@
     if (!auth) return;
     try {
       const u = JSON.parse(auth);
-      if (!u.empId || (u.role && u.role !== 'employee')) return;
+      if (!u.empId || (u.role && u.role.toLowerCase() !== 'employee')) return;
       currentEmployee = {
         empId: u.empId, title: u.title || '', name: u.name || '',
         phone: u.phone || '', position: u.position || '',
@@ -1061,7 +1111,10 @@
     } else {
       dur = `${document.getElementById('fullDays').value || '-'} วัน  (${document.getElementById('startDate').value} — ${document.getElementById('endDate').value})`;
     }
-    const docs = [...document.querySelectorAll('input[name="docs"]:checked')].map(c => c.value).join(', ') || 'ไม่มี';
+    const checkedDocs = [...document.querySelectorAll('input[name="docs"]:checked')].map(c => c.value);
+    const fileLabel   = attachedFile ? `📎 ${attachedFile.name} (${(attachedFile.size/1024).toFixed(0)} KB)` : '';
+    const docParts    = [...checkedDocs, fileLabel].filter(Boolean);
+    const docs        = docParts.join(', ') || 'ไม่มี';
 
     document.getElementById('reviewContent').innerHTML = `
       <div class="summary-section">
@@ -1172,39 +1225,119 @@
     }
   }
 
+  // ===== FILE ATTACHMENT =====
+  var attachedFile = null;       // { name, size, type, base64 }
+  const FILE_MAX_MB = 5;
+  const FILE_ALLOWED = ['image/jpeg', 'image/jpg', 'application/pdf'];
+
+  function handleFileDrop(event) {
+    event.preventDefault();
+    document.getElementById('fileDropZone').style.borderColor = '#d1d9e0';
+    document.getElementById('fileDropZone').style.background = '#f7f9fb';
+    var f = event.dataTransfer.files[0];
+    if (f) processFile(f);
+  }
+  function handleFileSelect(input) {
+    if (input.files && input.files[0]) processFile(input.files[0]);
+  }
+  function processFile(f) {
+    var errEl  = document.getElementById('fileError');
+    var prevEl = document.getElementById('filePreview');
+    errEl.style.display = 'none';
+    prevEl.style.display = 'none';
+    attachedFile = null;
+
+    // ตรวจประเภทไฟล์
+    if (!FILE_ALLOWED.includes(f.type.toLowerCase())) {
+      errEl.textContent = '❌ ไฟล์ต้องเป็น .jpg หรือ .pdf เท่านั้น';
+      errEl.style.display = 'block';
+      document.getElementById('fileInput').value = '';
+      return;
+    }
+    // ตรวจขนาด
+    if (f.size > FILE_MAX_MB * 1024 * 1024) {
+      errEl.textContent = `❌ ไฟล์ใหญ่เกิน ${FILE_MAX_MB} MB (ไฟล์นี้ ${(f.size/1024/1024).toFixed(1)} MB)`;
+      errEl.style.display = 'block';
+      document.getElementById('fileInput').value = '';
+      return;
+    }
+
+    // อ่านเป็น base64
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var b64 = e.target.result;   // data:…;base64,XXXX
+      attachedFile = { name: f.name, size: f.size, type: f.type, base64: b64 };
+
+      // แสดง preview
+      document.getElementById('fileIcon').textContent = f.type === 'application/pdf' ? '📑' : '🖼️';
+      document.getElementById('fileName').textContent = f.name;
+      document.getElementById('fileSize').textContent = (f.size / 1024).toFixed(0) + ' KB';
+      prevEl.style.display = 'flex';
+    };
+    reader.readAsDataURL(f);
+  }
+  function clearFile() {
+    attachedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('fileError').style.display = 'none';
+  }
+
+  function closeDone() {
+    // ล้าง session แล้วปิดหน้าต่าง หรือกลับไป index
+    sessionStorage.removeItem('pcAuth');
+    try { window.close(); } catch(e) {}
+    // ถ้า window.close() ไม่ได้ (เปิดเองไม่ใช่ popup) ให้กลับ index
+    setTimeout(function() {
+      window.location.href = 'index.html';
+    }, 300);
+  }
+
   async function submitForm() {
     var emp = currentEmployee;
     var ticketNum = 'LA-' + String(Math.floor(Math.random() * 90000) + 10000);
     document.getElementById('ticketId').textContent = ticketNum;
 
-    // ส่งข้อมูลไป API (ถ้าตั้งค่า URL แล้ว)
-    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-      try {
-        const leaveData = {
-          empId:      emp.empId,
-          empName:    emp.title + emp.name,
-          dept:       emp.department,
-          section:    emp.section || '',
-          position:   emp.position,
-          leaveType:  document.getElementById('leaveType')?.value || '',
-          startDate:  document.getElementById('startDate')?.value || '',
-          endDate:    document.getElementById('endDate')?.value || '',
-          days:       document.getElementById('leaveDays')?.textContent || '',
-          reason:     document.getElementById('leaveReason')?.value || '',
-          l1AppId:    emp.l1ApproverId || '',
-          l2AppId:    emp.l2ApproverId || '',
-          workflow:   emp.approvalWorkflow || ''
-        };
-        await apiPost({ action: 'submitLeave', data: leaveData });
-      } catch(e) { console.warn('API submit failed, proceeding with local state', e); }
-    }
+    // ── อ่านค่าจากฟอร์ม ──────────────────────────────────────
+    const isHalfDay   = document.getElementById('btnHalfDay').classList.contains('active');
+    const selectedType = document.querySelector('input[name="leaveType"]:checked')?.value || '';
+    const startDate   = document.getElementById('startDate')?.value  || '';
+    const endDate     = document.getElementById('endDate')?.value    || '';
+    const daysVal     = isHalfDay
+      ? (document.getElementById('halfHours')?.value || '0') + ' ชม.'
+      : (document.getElementById('fullDays')?.value  || '');
+
+    // ── ส่งข้อมูลไป API ───────────────────────────────────────
+    try {
+      const leaveData = {
+        empId:      emp.empId,
+        empName:    (emp.title || '') + (emp.name || ''),
+        dept:       emp.department  || '',
+        section:    emp.section     || '',
+        position:   emp.position    || '',
+        leaveType:  selectedType,
+        startDate:  isHalfDay ? (document.getElementById('halfDate')?.value || '') : startDate,
+        endDate:    isHalfDay ? (document.getElementById('halfDate')?.value || '') : endDate,
+        days:       daysVal,
+        reason:     document.getElementById('leaveReason')?.value || '',
+        l1AppId:    emp.l1ApproverId || '',
+        l2AppId:    emp.l2ApproverId || '',
+        workflow:   emp.approvalWorkflow || ''
+      };
+      // แนบไฟล์ (ถ้ามี) — ส่งเป็น base64 ให้ Apps Script บันทึกลง Drive
+      if (attachedFile) {
+        leaveData.attachmentName   = attachedFile.name;
+        leaveData.attachmentBase64 = attachedFile.base64;
+      }
+      await apiPost({ action: 'submitLeave', data: leaveData });
+    } catch(e) { console.warn('API submit failed, proceeding with local state', e); }
+
     document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
     document.getElementById('submittedView').classList.add('show');
     document.getElementById('formNav').style.display = 'none';
 
     // Mock email notifications
-    var leaveLabel = { sick:'ลาป่วย', personal:'ลากิจ', vacation:'ลาพักผ่อน', maternity:'ลาคลอด' };
-    var lType = leaveLabel[document.getElementById('leaveType') ? document.getElementById('leaveType').value : 'sick'] || 'ใบลา';
+    var lType = selectedType || 'ใบลา';
 
     if (emp.approvalWorkflow === 'type1' && emp.l1ApproverId) {
       var l1 = approverDB[emp.l1ApproverId];

@@ -280,8 +280,10 @@
       btn.innerHTML = 'เข้าสู่ระบบ →';
 
       // เก็บ session ไว้ให้หน้าปลายทางข้าม login
+      // NOTE: role ต้อง lowercase เสมอ เพื่อให้ทุกหน้าเช็คได้ถูกต้อง
       sessionStorage.setItem('pcAuth', JSON.stringify({
-        empId: user.empId, name: user.name, role: user.role,
+        empId: user.empId, name: user.name,
+        role: (user.role || 'employee').toLowerCase().trim(),
         title: user.title, position: user.position,
         dept: user.dept, section: user.section,
         phone: user.phone, email: user.email,

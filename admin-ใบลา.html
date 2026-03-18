@@ -841,7 +841,7 @@ let contestTargetId = null;
     if (!auth) return;
     try {
       const u = JSON.parse(auth);
-      if (!u.role || (u.role !== 'admin' && u.role !== 'superadmin')) return;
+      if (!u.role || (u.role.toLowerCase() !== 'admin' && u.role.toLowerCase() !== 'superadmin')) return;
       currentAdmin = { id: u.empId, name: u.name || '', email: u.email || '', role: u.role };
       window.addEventListener('DOMContentLoaded', () => {
         if (typeof apiGet === 'function') {

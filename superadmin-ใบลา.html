@@ -811,7 +811,7 @@ let activityLog = [
     if (!auth) return;
     try {
       const u = JSON.parse(auth);
-      if (u.role !== 'superadmin') return;
+      if (u.role.toLowerCase() !== 'superadmin') return;
       currentSAdmin = { id: u.empId, name: u.name || '', email: u.email || '', role: 'superadmin' };
       window.addEventListener('DOMContentLoaded', () => {
         if (typeof apiGet === 'function') {

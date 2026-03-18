@@ -715,7 +715,7 @@
     if (!auth) return;
     try {
       const u = JSON.parse(auth);
-      if (!u.role || !u.role.startsWith('manager')) return;
+      if (!u.role || !u.role.toLowerCase().startsWith('manager')) return;
       const lvl = u.role === 'manager_l1' ? 1 : 2;
       currentManager = {
         id: u.empId, name: u.name || '', position: u.position || '',
