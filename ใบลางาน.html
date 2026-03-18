@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ใบลาป่วย ลากิจ ลาพักผ่อน</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', 'Noto Sans Thai', Arial, sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+      font-size: 15px;
+      color: #222;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 780px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      overflow: hidden;
+    }
+
+    /* ===== HEADER ===== */
+    .form-header {
+      background: #3d3532;
+      color: white;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-logo-text { display:flex; flex-direction:column; gap:2px; }
+    .header-logo-text .hl-main { font-size:15px; font-weight:700; color:#fff; letter-spacing:.3px; }
+    .header-logo-text .hl-sub  { font-size:11px; color:rgba(255,255,255,.65); letter-spacing:.2px; }
+    .header-divider { width:1px; height:32px; background:rgba(255,255,255,.25); margin:0 6px; }
+
+    /* ===== MOCK EMAIL TOAST ===== */
+    #emailToastContainer {
+      position:fixed; top:20px; right:20px; z-index:9999;
+      display:flex; flex-direction:column; gap:10px; pointer-events:none;
+    }
+    .email-toast {
+      background:#1e293b; border:1px solid #334155; border-left:4px solid #22c55e;
+      border-radius:10px; padding:12px 16px; min-width:290px; max-width:370px;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      animation:toastIn .35s ease, toastOut .4s ease 5s forwards;
+      pointer-events:auto;
+    }
+    .email-toast-hdr { display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#22c55e;margin-bottom:5px; }
+    .email-toast-to  { font-size:11px; color:#94a3b8; }
+    .email-toast-sub { font-size:12px; color:#e2e8f0; margin-top:3px; }
+    .email-toast-body{ font-size:11px; color:#64748b; margin-top:4px; line-height:1.4; }
+    @keyframes toastIn  { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(40px)} }
+
+    /* ===== LOGIN SCREEN ===== */
+    #loginScreen {
+      padding: 48px 32px;
+      text-align: center;
+    }
+    .login-icon { font-size: 56px; margin-bottom: 12px; }
+    .login-title { font-size: 20px; font-weight: 700; color: #1a3a6e; margin-bottom: 6px; }
+    .login-sub   { font-size: 14px; color: #6b7280; margin-bottom: 32px; }
+
+    .login-form {
+      max-width: 360px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .login-form .field { margin-bottom: 16px; }
+    .login-form label {
+      font-size: 13px; font-weight: 600; color: #4a5568;
+      display: block; margin-bottom: 6px;
+    }
+    .login-form input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #d1d9e0;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-form input:focus {
+      border-color: #1a3a6e;
+      box-shadow: 0 0 0 3px rgba(26,58,110,0.10);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: #1a3a6e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s;
+    }
+    .btn-login:hover { background: #152d57; }
+
+    .error-msg {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      color: #c53030;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 14px;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    .hint-box {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #2b6cb0;
+      margin-top: 20px;
+      text-align: left;
+    }
+    .hint-box strong { display: block; margin-bottom: 6px; }
+    .hint-box table { width: 100%; border-collapse: collapse; }
+    .hint-box td { padding: 3px 8px; }
+    .hint-box td:first-child { font-weight: 600; width: 90px; }
+
+    /* ===== PROGRESS ===== */
+    .progress-bar {
+      background: #eef2f7;
+      padding: 14px 32px;
+      display: flex;
+      border-bottom: 1px solid #dde3ec;
+    }
+    .step {
+      flex: 1; display: flex; align-items: center;
+      gap: 7px; font-size: 13px; color: #9aa5b4;
+    }
+    .step.active { color: #1a3a6e; font-weight: 600; }
+    .step.done   { color: #27ae60; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #dde3ec;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 11px; flex-shrink: 0;
+    }
+    .step.active .step-num { background: #1a3a6e; color: white; }
+    .step.done   .step-num { background: #27ae60; color: white; }
+    .step-connector { flex: 1; height: 2px; background: #dde3ec; align-self: center; }
+
+    /* ===== FORM BODY ===== */
+    .form-body { padding: 26px 32px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 16px; font-weight: 700; color: #1a3a6e;
+      margin-bottom: 18px; padding-bottom: 10px;
+      border-bottom: 2px solid #eef2f7;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Employee info card (auto-filled) */
+    .emp-card {
+      background: #f0f7ff;
+      border: 1.5px solid #bee3f8;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .emp-avatar {
+      width: 50px; height: 50px;
+      background: #1a3a6e;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: white; flex-shrink: 0;
+    }
+    .emp-info .name { font-size: 17px; font-weight: 700; color: #1a3a6e; }
+    .emp-info .meta { font-size: 13px; color: #4a5568; margin-top: 2px; }
+    .emp-info .badge {
+      display: inline-block;
+      background: #1a3a6e;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+
+    /* Form elements */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-row.full  { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    label  { font-size: 13px; font-weight: 600; color: #4a5568; }
+    label span.req { color: #e53e3e; margin-left: 2px; }
+
+    input[type="text"], input[type="date"], input[type="time"],
+    input[type="number"], input[type="tel"], select, textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #d1d9e0; border-radius: 7px;
+      font-size: 14px; font-family: inherit; color: #222;
+      background: #fff; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #1a3a6e;
+      box-shadow: 0 0 0 3px rgba(26,58,110,0.10);
+    }
+    input[readonly] { background: #f7f9fb; color: #4a5568; cursor: default; }
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* Radio / Checkbox */
+    .radio-group, .checkbox-group {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
+    }
+    .radio-item, .check-item {
+      display: flex; align-items: center; gap: 7px; cursor: pointer;
+      font-size: 14px; padding: 7px 12px;
+      border: 1.5px solid #d1d9e0; border-radius: 7px;
+      transition: all 0.15s; user-select: none;
+    }
+    .radio-item:hover, .check-item:hover { border-color: #1a3a6e; background: #eef2f7; }
+    .radio-item input, .check-item input { width: auto; padding: 0; border: none; accent-color: #1a3a6e; }
+    .radio-item.selected, .check-item.checked { border-color: #1a3a6e; background: #eef2f7; font-weight: 600; }
+
+    /* Duration toggle */
+    .duration-panel {
+      background: #f7f9fb; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; padding: 14px; margin-top: 6px;
+    }
+    .duration-toggle { display: flex; gap: 10px; margin-bottom: 14px; }
+    .toggle-btn {
+      flex: 1; padding: 9px; border: 1.5px solid #d1d9e0; border-radius: 7px;
+      background: white; cursor: pointer; font-size: 14px; font-family: inherit;
+      font-weight: 600; color: #4a5568; transition: all 0.15s;
+    }
+    .toggle-btn.active { background: #1a3a6e; border-color: #1a3a6e; color: white; }
+    .duration-subpanel { display: none; }
+    .duration-subpanel.show { display: block; }
+
+    /* Leave quota cards */
+    .leave-quota-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 6px; }
+
+    /* ===== APPROVAL CHAIN BOX ===== */
+    .approval-chain-box {
+      background: #f7f9fb; border: 1.5px solid #d1d9e0;
+      border-radius: 10px; padding: 14px 18px;
+      display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    }
+    .chain-step {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chain-badge {
+      background: #1a3a6e; color: white;
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .chain-badge.final { background: #e8551a; }
+    .chain-info { font-size: 13px; color: #4a5568; }
+    .chain-info .chain-name { font-weight: 700; color: #1a3a6e; font-size: 14px; }
+    .chain-info .chain-pos  { font-size: 11px; color: #718096; }
+    .chain-arrow {
+      font-size: 18px; color: #a0aec0; padding: 0 10px;
+    }
+    .chain-tag-type1 {
+      display: inline-block; background: #ebf8ff; border: 1px solid #bee3f8;
+      color: #2b6cb0; border-radius: 5px; padding: 2px 9px;
+      font-size: 11px; font-weight: 700; margin-left: 8px;
+    }
+    .chain-tag-type2 {
+      display: inline-block; background: #fff3cd; border: 1px solid #ffc107;
+      color: #856404; border-radius: 5px; padding: 2px 9px;
+      font-size: 11px; font-weight: 700; margin-left: 8px;
+    }
+    .quota-card {
+      border-radius: 10px; padding: 14px 12px; text-align: center;
+      border: 1.5px solid #e2e8f0;
+    }
+    .quota-card.sick     { background: #fff5f5; border-color: #fed7d7; }
+    .quota-card.business { background: #fffff0; border-color: #faf089; }
+    .quota-card.vacation { background: #f0fff4; border-color: #9ae6b4; }
+
+    .quota-card .qtype   { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .quota-card.sick     .qtype { color: #c53030; }
+    .quota-card.business .qtype { color: #975a16; }
+    .quota-card.vacation .qtype { color: #276749; }
+
+    .quota-card .qnums   { font-size: 22px; font-weight: 800; color: #1a202c; line-height: 1; }
+    .quota-card .qsub    { font-size: 11px; color: #718096; margin-top: 2px; }
+    .quota-divider       { width: 100%; height: 1px; background: #e2e8f0; margin: 8px 0; }
+
+    .quota-bar-wrap { margin-top: 8px; }
+    .quota-bar-bg {
+      background: #e2e8f0; border-radius: 99px; height: 6px; overflow: hidden;
+    }
+    .quota-bar-fill {
+      height: 100%; border-radius: 99px; transition: width 0.6s ease;
+    }
+    .quota-card.sick     .quota-bar-fill { background: #fc8181; }
+    .quota-card.business .quota-bar-fill { background: #f6e05e; }
+    .quota-card.vacation .quota-bar-fill { background: #68d391; }
+    .quota-bar-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: #718096; margin-top: 4px;
+    }
+    .remaining-tag {
+      display: inline-block; margin-top: 6px;
+      padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .quota-card.sick     .remaining-tag { background: #fed7d7; color: #c53030; }
+    .quota-card.business .remaining-tag { background: #fefcbf; color: #975a16; }
+    .quota-card.vacation .remaining-tag { background: #c6f6d5; color: #276749; }
+    .remaining-tag.warn  { background: #fed7d7 !important; color: #c53030 !important; }
+
+    /* Review */
+    .summary-section { margin-bottom: 18px; }
+    .summary-section h3 { font-size: 14px; font-weight: 700; color: #1a3a6e; margin-bottom: 8px; }
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .summary-table td { padding: 8px 10px; border-bottom: 1px solid #eef2f7; }
+    .summary-table td:first-child { color: #6b7280; width: 38%; }
+    .summary-table td:last-child { font-weight: 500; }
+
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+    .alert.info { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+
+    /* Nav buttons */
+    .form-nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 32px;
+      background: #f7f9fb; border-top: 1px solid #e2e8f0;
+    }
+    .btn {
+      padding: 10px 22px; border-radius: 8px; font-size: 15px;
+      font-family: inherit; font-weight: 600; cursor: pointer;
+      border: none; transition: all 0.15s;
+    }
+    .btn-primary   { background: #1a3a6e; color: white; }
+    .btn-primary:hover { background: #152d57; }
+    .btn-secondary { background: white; color: #4a5568; border: 1.5px solid #d1d9e0; }
+    .btn-secondary:hover { background: #eef2f7; }
+    .btn-success   { background: #27ae60; color: white; }
+    .btn-success:hover { background: #1e8449; }
+
+    /* Submitted */
+    .submitted-view { display: none; text-align: center; padding: 48px 32px; }
+    .submitted-view.show { display: block; }
+    .submitted-icon { font-size: 64px; margin-bottom: 14px; }
+    .submitted-view h2 { font-size: 22px; font-weight: 700; color: #276749; margin-bottom: 8px; }
+    .submitted-view p  { color: #6b7280; font-size: 14px; }
+    .ticket-id {
+      display: inline-block; background: #eef2f7;
+      border: 1.5px solid #d1d9e0; border-radius: 8px;
+      padding: 8px 24px; font-size: 20px; font-weight: 700;
+      color: #1a3a6e; margin: 14px 0; letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 0; }
+      .page { border-radius: 0; }
+      .form-header { padding: 16px; }
+      .form-body, #loginScreen { padding: 20px 16px; }
+      .form-nav { padding: 14px 16px; }
+      .form-row, .form-row.three { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .progress-bar { padding: 12px 16px; }
+      .step { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="form-header">
+    <span style="font-size:26px;">📋</span>
+    <div class="header-divider"></div>
+    <div class="header-logo-text">
+      <span class="hl-main">ระบบแจ้งลาออนไลน์ Plan Consultants Co.,Ltd.</span>
+      <span class="hl-sub">ยื่นใบลาป่วย · ลากิจ · ลาพักผ่อน</span>
+    </div>
+  </div>
+  <!-- Mock Email Toast Container -->
+  <div id="emailToastContainer"></div>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="loginScreen">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">เข้าสู่ระบบ</div>
+    <div class="login-sub">กรอกรหัสพนักงานและเบอร์โทรที่ลงทะเบียนไว้</div>
+
+    <div class="login-form">
+      <div class="field">
+        <label>รหัสพนักงาน</label>
+        <input type="text" id="loginEmpId" placeholder="เช่น EMP001"
+          onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <div class="field">
+        <label>รหัสผ่าน</label>
+        <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+          <input type="password" id="loginPwd" placeholder="รหัสผ่าน"
+            onkeydown="if(event.key==='Enter')doLogin()"
+            style="width:100%;padding-right:42px;" />
+          <button type="button" onclick="togglePwd(this)" tabindex="-1"
+            style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:#64748b;padding:0;" title="แสดง/ซ่อนรหัสผ่าน">👁️</button>
+        </div>
+      </div>
+      <button class="btn-login" onclick="doLogin()">เข้าสู่ระบบ →</button>
+
+      <div class="error-msg" id="loginError">
+        ❌ รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง
+      </div>
+
+      <div class="hint-box">
+        <strong>ℹ️ ระบบเชื่อมต่อ Google Sheets</strong>
+        ใช้รหัสพนักงานและรหัสผ่านที่ได้รับจาก Admin
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MAIN FORM ===== -->
+  <div id="mainForm" style="display:none;">
+
+    <!-- Change Password Button -->
+    <div style="text-align:right;padding:8px 16px 0;">
+      <button onclick="showChangePwd()" style="background:none;border:none;cursor:pointer;color:#64748b;font-size:13px;">🔑 เปลี่ยนรหัสผ่าน</button>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePwdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+      <div style="background:#1e293b;border-radius:16px;padding:32px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <h3 style="color:#f1f5f9;margin:0 0 20px;font-size:18px;">🔑 เปลี่ยนรหัสผ่าน</h3>
+        <div style="margin-bottom:14px;">
+          <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">รหัสผ่านเดิม</label>
+          <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="cpOld" placeholder="รหัสผ่านเดิม"
+              style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+            <button type="button" onclick="togglePwd(this)" tabindex="-1"
+              style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">รหัสผ่านใหม่</label>
+          <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="cpNew" placeholder="อย่างน้อย 6 ตัวอักษร"
+              style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+            <button type="button" onclick="togglePwd(this)" tabindex="-1"
+              style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+          </div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">ยืนยันรหัสผ่านใหม่</label>
+          <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="cpConfirm" placeholder="กรอกซ้ำ"
+              style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+            <button type="button" onclick="togglePwd(this)" tabindex="-1"
+              style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+          </div>
+        </div>
+        <div id="cpError" style="display:none;color:#f87171;font-size:13px;margin-bottom:14px;"></div>
+        <div id="cpSuccess" style="display:none;color:#4ade80;font-size:13px;margin-bottom:14px;">✅ เปลี่ยนรหัสผ่านสำเร็จ!</div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="doChangePwd()"
+            style="flex:1;background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">บันทึก</button>
+          <button onclick="closeChangePwd()"
+            style="flex:1;background:#334155;color:#f1f5f9;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-bar">
+      <div class="step active" id="step1"><div class="step-num">1</div><span>รายละเอียดการลา</span></div>
+      <div class="step-connector"></div>
+      <div class="step" id="step2"><div class="step-num">2</div><span>เอกสาร & ที่ติดต่อ</span></div>
+      <div class="step-connector"></div>
+      <div class="step" id="step3"><div class="step-num">3</div><span>ตรวจสอบ & ส่ง</span></div>
+    </div>
+
+    <div class="form-body">
+
+      <!-- Section 1 -->
+      <div class="section active" id="section1">
+        <div class="section-title"><span>📅</span> รายละเอียดการลา</div>
+
+        <!-- Employee card (auto-filled) -->
+        <div class="emp-card">
+          <div class="emp-avatar">👤</div>
+          <div class="emp-info">
+            <div class="name" id="dispName">—</div>
+            <div class="meta" id="dispMeta">—</div>
+            <div class="badge" id="dispEmpId">—</div>
+          </div>
+        </div>
+
+        <!-- เส้นทางการอนุมัติ (auto จาก DB) -->
+        <div class="field" style="margin-bottom:14px;">
+          <label>เส้นทางการอนุมัติ
+            <span style="font-size:11px;color:#9aa5b4;font-weight:400;"> (กำหนดโดยระบบอัตโนมัติ)</span>
+          </label>
+          <div id="approvalChainDisplay">
+            <!-- จะถูก render โดย JS หลัง login -->
+          </div>
+        </div>
+
+        <!-- วันที่ยื่น (ระบบกรอกอัตโนมัติ) -->
+        <div class="form-row">
+          <div class="field">
+            <label>วันที่ยื่นใบลา
+              <span style="font-size:11px;color:#9aa5b4;font-weight:400;"> (ระบบกรอกให้อัตโนมัติ)</span>
+            </label>
+            <input type="text" id="submitDate" readonly
+              style="background:#f7f9fb;color:#4a5568;cursor:default;" />
+          </div>
+        </div>
+
+        <!-- ประเภทการลา -->
+        <div class="field" style="margin-bottom:14px;">
+          <label>ประเภทการลา <span class="req">*</span></label>
+          <div class="radio-group" id="leaveTypeGroup">
+            <label class="radio-item" onclick="selectRadio(this,'leaveTypeGroup');showOtherLeave(false)">
+              <input type="radio" name="leaveType" value="ลาป่วย" /> 🤒 ลาป่วย
+            </label>
+            <label class="radio-item" onclick="selectRadio(this,'leaveTypeGroup');showOtherLeave(false)">
+              <input type="radio" name="leaveType" value="ลากิจ" /> 📎 ลากิจ
+            </label>
+            <label class="radio-item" onclick="selectRadio(this,'leaveTypeGroup');showOtherLeave(false)">
+              <input type="radio" name="leaveType" value="ลาพักผ่อน" /> 🏖️ ลาพักผ่อน
+            </label>
+            <label class="radio-item" onclick="selectRadio(this,'leaveTypeGroup');showOtherLeave(true)">
+              <input type="radio" name="leaveType" value="ลาอื่นๆ" /> อื่น ๆ
+            </label>
+          </div>
+          <input type="text" id="otherLeaveDetail" placeholder="ระบุประเภทการลา..."
+            style="display:none; margin-top:8px;" />
+        </div>
+
+        <!-- ระยะเวลาการลา -->
+        <div class="field" style="margin-bottom:14px;">
+          <label>ระยะเวลาการลา <span class="req">*</span></label>
+          <div class="duration-panel">
+            <div class="duration-toggle">
+              <button class="toggle-btn active" id="btnFullDay" onclick="switchDuration('full')">📆 ลาเต็มวัน</button>
+              <button class="toggle-btn" id="btnHalfDay" onclick="switchDuration('half')">🕐 ลาเป็นรายชั่วโมง</button>
+            </div>
+            <div class="duration-subpanel show" id="panelFullDay">
+              <div class="form-row three">
+                <div class="field">
+                  <label>จำนวน (วัน)</label>
+                  <input type="number" id="fullDays" min="1" placeholder="0" readonly />
+                </div>
+                <div class="field">
+                  <label>ตั้งแต่วันที่ <span class="req">*</span></label>
+                  <input type="date" id="startDate" onchange="calcDays()" />
+                </div>
+                <div class="field">
+                  <label>ถึงวันที่ <span class="req">*</span></label>
+                  <input type="date" id="endDate" onchange="calcDays()" />
+                </div>
+              </div>
+            </div>
+            <div class="duration-subpanel" id="panelHalfDay">
+              <div class="form-row three">
+                <div class="field">
+                  <label>วันที่ <span class="req">*</span></label>
+                  <input type="date" id="halfDate" />
+                </div>
+                <div class="field">
+                  <label>ตั้งแต่เวลา <span class="req">*</span></label>
+                  <input type="time" id="startTime" onchange="calcHours()" />
+                </div>
+                <div class="field">
+                  <label>ถึงเวลา <span class="req">*</span></label>
+                  <input type="time" id="endTime" onchange="calcHours()" />
+                </div>
+              </div>
+              <!-- ผลลัพธ์คำนวณชั่วโมง -->
+              <div id="hoursResult" style="display:none; margin-top:10px;
+                background:#f0fff4; border:1.5px solid #9ae6b4; border-radius:8px;
+                padding:10px 16px; font-size:14px; color:#276749; font-weight:600;">
+              </div>
+              <div id="hoursError" style="display:none; margin-top:10px;
+                background:#fff5f5; border:1.5px solid #fed7d7; border-radius:8px;
+                padding:10px 16px; font-size:13px; color:#c53030;">
+              </div>
+              <!-- เก็บค่าชั่วโมงที่คำนวณได้ (hidden) -->
+              <input type="hidden" id="halfHours" value="" />
+            </div>
+          </div>
+        </div>
+
+        <!-- สาเหตุ -->
+        <div class="field">
+          <label>สาเหตุการลา <span style="font-size:11px;color:#9aa5b4;font-weight:400;">(ไม่บังคับ)</span></label>
+          <textarea id="leaveReason" placeholder="อธิบายเหตุผลในการลา (ถ้ามี)..."></textarea>
+        </div>
+      </div><!-- /section1 -->
+
+
+      <!-- Section 2 -->
+      <div class="section" id="section2">
+        <div class="section-title"><span>📎</span> เอกสาร & ที่ติดต่อ</div>
+
+        <!-- วันลาที่ใช้ไปแล้ว (auto จาก DB) -->
+        <div class="field" style="margin-bottom:16px;">
+          <label>สิทธิ์การลาของคุณในปีนี้</label>
+          <div class="leave-quota-grid" id="leaveQuotaGrid">
+            <!-- จะถูก render โดย JS หลัง login -->
+          </div>
+        </div>
+
+        <!-- เอกสารแนบ -->
+        <div class="field" style="margin-bottom:16px;">
+          <label>เอกสารแนบ</label>
+          <div class="checkbox-group" id="docGroup">
+            <label class="check-item" onclick="toggleCheck(this)">
+              <input type="checkbox" name="docs" value="ใบรับรองแพทย์" /> 🏥 ใบรับรองแพทย์
+            </label>
+            <label class="check-item" onclick="toggleCheck(this)">
+              <input type="checkbox" name="docs" value="ใบเสร็จค่ารักษา" /> 🧾 ใบเสร็จค่ารักษา
+            </label>
+            <label class="check-item" onclick="toggleCheck(this)">
+              <input type="checkbox" name="docs" value="อื่นๆ" /> 📎 อื่น ๆ
+            </label>
+          </div>
+        </div>
+
+        <!-- ที่พัก & โทร -->
+        <div class="form-row">
+          <div class="field">
+            <label>ที่พักขณะลา</label>
+            <input type="text" id="stayAddress" placeholder="ที่อยู่ขณะลาหยุด" />
+          </div>
+          <div class="field">
+            <label>โทรศัพท์ติดต่อ</label>
+            <input type="tel" id="contactPhone" placeholder="เบอร์โทร" />
+          </div>
+        </div>
+      </div><!-- /section2 -->
+
+
+      <!-- Section 3: Review -->
+      <div class="section" id="section3">
+        <div class="section-title"><span>✅</span> ตรวจสอบก่อนส่ง</div>
+        <div class="alert info">📋 กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนกดส่ง</div>
+        <div id="reviewContent"></div>
+      </div>
+
+      <!-- Submitted -->
+      <div class="submitted-view" id="submittedView">
+        <div class="submitted-icon">🎉</div>
+        <h2>ส่งใบลาเรียบร้อยแล้ว!</h2>
+        <p>ใบลาของคุณถูกบันทึกแล้ว รอการพิจารณาจากผู้บังคับบัญชา</p>
+        <div class="ticket-id" id="ticketId">LA-00000</div>
+        <p style="font-size:13px; color:#6b7280;">สถานะจะอัปเดตเมื่อผู้บังคับบัญชาพิจารณาแล้ว</p>
+        <br/>
+        <button class="btn btn-secondary" onclick="location.reload()">📝 ยื่นใบลาใหม่</button>
+      </div>
+
+    </div><!-- /form-body -->
+
+    <!-- Nav -->
+    <div class="form-nav" id="formNav">
+      <button class="btn btn-secondary" id="btnBack" onclick="prevStep()" style="visibility:hidden;">← ย้อนกลับ</button>
+      <span id="stepIndicator" style="font-size:13px;color:#9aa5b4;">ขั้นตอน 1 จาก 3</span>
+      <button class="btn btn-primary" id="btnNext" onclick="nextStep()">ถัดไป →</button>
+    </div>
+
+  </div><!-- /mainForm -->
+
+</div><!-- /page -->
+
+<script>
+  // ============================================================
+  // API CONFIG — ใส่ URL ของ Apps Script Web App ที่นี่
+  // ============================================================
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec';
+
+  async function apiGet(params) {
+    const qs = Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+    const res = await fetch(API_URL + '?' + qs);
+    return res.json();
+  }
+  async function apiPost(data) {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  }
+
+  // ============================================================
+  // MOCK DATABASE (fallback ถ้า API_URL ยังไม่ได้ตั้งค่า)
+  // ============================================================
+  // ============================================================
+  // APPROVER DATABASE — ผู้บังคับบัญชาทุกระดับ
+  // ============================================================
+  const approverDB = {
+    "MGR001": { name: "ธนากร สุขสม",   position: "ผู้จัดการฝ่ายวิศวกรรม" },
+    "MGR002": { name: "ธัญญา สร้างดี", position: "ผู้จัดการฝ่ายออกแบบ"   },
+    "MGR003": { name: "จิตรา มั่นคง",  position: "กรรมการผู้จัดการ"       },
+  };
+
+  // ============================================================
+  // MOCK DATABASE — พนักงาน (ในระบบจริงจะ fetch จาก Supabase/API)
+  // approvalWorkflow: "type1" = 2 ขั้น (L1→L2), "type2" = ตรงถึง L2
+  // ============================================================
+  const mockDB = {
+    "EMP001": {
+      phone: "0812345678", title: "นาย", name: "สมชาย ใจดี",
+      position: "วิศวกรโยธา", department: "ฝ่ายวิศวกรรม", unit: "โครงการ A",
+      approvalWorkflow: "type1",   // 2 ขั้น: ขั้นต้น → ขั้นสูง
+      l1ApproverId: "MGR001",      // ผู้จัดการฝ่ายวิศวกรรม
+      l2ApproverId: "MGR003",      // กรรมการผู้จัดการ
+      leave: {
+        sick:     { quota: 30, used: 5  },
+        business: { quota: 10, used: 3  },
+        vacation: { quota: 10, used: 2  }
+      }
+    },
+    "EMP002": {
+      phone: "0898765432", title: "นางสาว", name: "สุดา มีสุข",
+      position: "สถาปนิก", department: "ฝ่ายออกแบบ", unit: "สำนักงาน",
+      approvalWorkflow: "type1",   // 2 ขั้น: ขั้นต้น → ขั้นสูง
+      l1ApproverId: "MGR002",      // ผู้จัดการฝ่ายออกแบบ (คนละคนกับ EMP001)
+      l2ApproverId: "MGR003",      // กรรมการผู้จัดการ
+      leave: {
+        sick:     { quota: 30, used: 12 },
+        business: { quota: 10, used: 0  },
+        vacation: { quota: 10, used: 7  }
+      }
+    },
+    "EMP003": {
+      phone: "0856781234", title: "นาง", name: "วิภา รักงาน",
+      position: "ผู้จัดการโครงการ", department: "ฝ่ายบริหาร", unit: "โครงการ B",
+      approvalWorkflow: "type2",   // ตรงถึงระดับสูง (ระดับบน — 1 สาย)
+      l1ApproverId: null,          // ไม่มีขั้นต้น
+      l2ApproverId: "MGR003",      // กรรมการผู้จัดการ
+      leave: {
+        sick:     { quota: 30, used: 0  },
+        business: { quota: 15, used: 8  },
+        vacation: { quota: 15, used: 10 }
+      }
+    },
+  };
+
+  let currentEmployee = null;
+  let currentStep = 1;
+  const totalSteps = 3;
+
+  // ===== LOGIN =====
+
+  function togglePwd(btn) {
+    var inp = btn.previousElementSibling;
+    if (!inp) inp = btn.parentElement.querySelector('input');
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁️'; }
+  }
+
+  
+  // ── AUTO LOGIN จาก index.html ────────────────────────────
+  (function() {
+    const auth = sessionStorage.getItem('pcAuth');
+    if (!auth) return;
+    try {
+      const u = JSON.parse(auth);
+      if (!u.empId || (u.role && u.role !== 'employee')) return;
+      currentEmployee = {
+        empId: u.empId, title: u.title || '', name: u.name || '',
+        phone: u.phone || '', position: u.position || '',
+        department: u.dept || '', section: u.section || '',
+        approvalWorkflow: u.workflow || 'type1',
+        l1ApproverId: u.l1Id || null, l2ApproverId: u.l2Id || null,
+        leave: { sick:{quota:30,used:0}, business:{quota:10,used:0}, vacation:{quota:10,used:0} }
+      };
+      // โหลดโควต้าจาก API
+      if (typeof apiGet === 'function') {
+        apiGet({ action:'getQuotas', empId: u.empId }).then(q => {
+          if (q.ok && q.data.length > 0) {
+            const d = q.data[0];
+            currentEmployee.leave = {
+              sick:     { quota: Number(d.sickQuota)||30,     used: Number(d.sickUsed)||0 },
+              business: { quota: Number(d.businessQuota)||10, used: Number(d.businessUsed)||0 },
+              vacation: { quota: Number(d.vacationQuota)||10, used: Number(d.vacationUsed)||0 }
+            };
+          }
+        }).catch(()=>{});
+      }
+      window.addEventListener('DOMContentLoaded', () => loadForm());
+    } catch(e) {}
+  })();
+
+  async function doLogin() {
+    const empId = document.getElementById('loginEmpId').value.trim().toUpperCase();
+    const pwd   = document.getElementById('loginPwd').value;
+    const errEl = document.getElementById('loginError');
+
+    if (!empId || !pwd) { errEl.classList.add('show'); return; }
+
+    try {
+      const result = await apiGet({ action: 'login', id: empId, password: pwd });
+      if (!result.ok) { errEl.classList.add('show'); return; }
+
+      const u = result.user;
+      errEl.classList.remove('show');
+      currentEmployee = {
+        empId: u.empId, title: u.title, name: u.name,
+        phone: u.phone, position: u.position,
+        department: u.dept, section: u.section,
+        approvalWorkflow: u.workflow,
+        l1ApproverId: u.l1Id, l2ApproverId: u.l2Id,
+        leave: {}
+      };
+
+      // โหลดโควต้าการลา
+      const qRes = await apiGet({ action: 'getQuotas', empId: empId });
+      if (qRes.ok && qRes.data.length > 0) {
+        const q = qRes.data[0];
+        currentEmployee.leave = {
+          sick:     { quota: Number(q.sickQuota)||30,     used: Number(q.sickUsed)||0     },
+          business: { quota: Number(q.businessQuota)||10, used: Number(q.businessUsed)||0 },
+          vacation: { quota: Number(q.vacationQuota)||10, used: Number(q.vacationUsed)||0 }
+        };
+      }
+
+      // โหลดข้อมูลผู้อนุมัติ
+      const aRes = await apiGet({ action: 'getApprovers' });
+      if (aRes.ok) {
+        aRes.data.forEach(a => { approverDB[a.id] = { name: a.name, position: a.position }; });
+      }
+
+      loadForm();
+    } catch(e) {
+      console.error(e);
+      errEl.classList.add('show');
+    }
+  }
+
+  function loadForm() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainForm').style.display = 'block';
+
+    const e = currentEmployee;
+    document.getElementById('dispName').textContent = `${e.title} ${e.name}`;
+    document.getElementById('dispMeta').textContent = `${e.position} | ${e.department} | ${e.unit}`;
+    document.getElementById('dispEmpId').textContent = e.empId;
+    document.getElementById('contactPhone').value = e.phone;
+    const today = new Date();
+    const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    document.getElementById('submitDate').value =
+      `${today.getDate()} ${thaiMonths[today.getMonth()]} ${today.getFullYear() + 543}`;
+
+    // render เส้นทางการอนุมัติอัตโนมัติ
+    renderApprovalChain(e);
+
+    // render โควต้าการลาจาก DB
+    renderLeaveQuota(e.leave);
+  }
+
+  function renderApprovalChain(emp) {
+    const box = document.getElementById('approvalChainDisplay');
+    const l2  = approverDB[emp.l2ApproverId];
+
+    if (emp.approvalWorkflow === 'type1') {
+      const l1 = approverDB[emp.l1ApproverId];
+      box.innerHTML = `
+        <div class="approval-chain-box">
+          <div class="chain-step">
+            <div>
+              <div class="chain-badge">ขั้นต้น</div>
+            </div>
+            <div class="chain-info" style="margin-left:10px;">
+              <div class="chain-name">${l1.name}</div>
+              <div class="chain-pos">${l1.position}</div>
+            </div>
+          </div>
+          <div class="chain-arrow">→</div>
+          <div class="chain-step">
+            <div>
+              <div class="chain-badge final">ขั้นสูง</div>
+            </div>
+            <div class="chain-info" style="margin-left:10px;">
+              <div class="chain-name">${l2.name}</div>
+              <div class="chain-pos">${l2.position}</div>
+            </div>
+          </div>
+          <span class="chain-tag-type1">2 ขั้นตอน</span>
+        </div>`;
+    } else {
+      box.innerHTML = `
+        <div class="approval-chain-box">
+          <div class="chain-step">
+            <div>
+              <div class="chain-badge final">อนุมัติโดยตรง</div>
+            </div>
+            <div class="chain-info" style="margin-left:10px;">
+              <div class="chain-name">${l2.name}</div>
+              <div class="chain-pos">${l2.position}</div>
+            </div>
+          </div>
+          <span class="chain-tag-type2">1 ขั้นตอน</span>
+        </div>`;
+    }
+  }
+
+  function renderLeaveQuota(leave) {
+    const types = [
+      { key: 'sick',     cls: 'sick',     icon: '🤒', label: 'ลาป่วย'    },
+      { key: 'business', cls: 'business', icon: '📎', label: 'ลากิจ'     },
+      { key: 'vacation', cls: 'vacation', icon: '🏖️', label: 'ลาพักผ่อน' },
+    ];
+    const grid = document.getElementById('leaveQuotaGrid');
+    grid.innerHTML = types.map(t => {
+      const d = leave[t.key];
+      const remaining = d.quota - d.used;
+      const pct = Math.min(100, Math.round((d.used / d.quota) * 100));
+      const warnClass = remaining <= 2 ? 'warn' : '';
+      return `
+        <div class="quota-card ${t.cls}">
+          <div class="qtype">${t.icon} ${t.label}</div>
+          <div class="qnums">${d.used} <span style="font-size:14px;font-weight:400;color:#718096;">/ ${d.quota} วัน</span></div>
+          <div class="qsub">ใช้ไปแล้ว</div>
+          <div class="quota-divider"></div>
+          <div class="quota-bar-wrap">
+            <div class="quota-bar-bg">
+              <div class="quota-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="quota-bar-label"><span>0</span><span>${d.quota}</span></div>
+          </div>
+          <div class="remaining-tag ${warnClass}">เหลืออีก ${remaining} วัน</div>
+        </div>`;
+    }).join('');
+  }
+
+  // ===== FORM HELPERS =====
+  function selectRadio(el, groupId) {
+    document.querySelectorAll('#' + groupId + ' .radio-item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+  function toggleCheck(el) { el.classList.toggle('checked'); }
+  function showOtherLeave(show) {
+    document.getElementById('otherLeaveDetail').style.display = show ? 'block' : 'none';
+  }
+  function switchDuration(type) {
+    const isFull = type === 'full';
+    document.getElementById('btnFullDay').classList.toggle('active', isFull);
+    document.getElementById('btnHalfDay').classList.toggle('active', !isFull);
+    document.getElementById('panelFullDay').classList.toggle('show', isFull);
+    document.getElementById('panelHalfDay').classList.toggle('show', !isFull);
+  }
+  function calcDays() {
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    if (s && e) {
+      const diff = Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
+      document.getElementById('fullDays').value = diff > 0 ? diff : '';
+    }
+  }
+
+  function calcHours() {
+    const s = document.getElementById('startTime').value;
+    const e = document.getElementById('endTime').value;
+    const resultEl = document.getElementById('hoursResult');
+    const errorEl  = document.getElementById('hoursError');
+    resultEl.style.display = 'none';
+    errorEl.style.display  = 'none';
+    document.getElementById('halfHours').value = '';
+    if (!s || !e) return;
+
+    const [sh, sm] = s.split(':').map(Number);
+    const [eh, em] = e.split(':').map(Number);
+    const totalMins = (eh * 60 + em) - (sh * 60 + sm);
+
+    if (totalMins <= 0) {
+      errorEl.style.display = 'block';
+      errorEl.textContent = '⚠️ เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
+      return;
+    }
+
+    const hrs  = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    document.getElementById('halfHours').value = (totalMins / 60).toFixed(2);
+
+    const display = hrs > 0 && mins > 0
+      ? `${hrs} ชั่วโมง ${mins} นาที`
+      : hrs > 0 ? `${hrs} ชั่วโมง`
+      : `${mins} นาที`;
+
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `⏱ ระยะเวลาลา: <strong>${display}</strong>&nbsp;&nbsp;
+      <span style="font-weight:400;color:#4a5568;">(${s} — ${e} น.)</span>`;
+  }
+
+  // ===== VALIDATION =====
+  function validateStep(step) {
+    if (step === 1) {
+      if (!document.querySelector('input[name="leaveType"]:checked'))
+        return alert('กรุณาเลือกประเภทการลา'), false;
+      const isHalf = document.getElementById('btnHalfDay').classList.contains('active');
+      if (!isHalf) {
+        if (!document.getElementById('startDate').value || !document.getElementById('endDate').value)
+          return alert('กรุณาระบุวันที่ลา'), false;
+      } else {
+        if (!document.getElementById('halfDate').value)
+          return alert('กรุณาระบุวันที่ลา'), false;
+        if (!document.getElementById('startTime').value || !document.getElementById('endTime').value)
+          return alert('กรุณาระบุเวลาเริ่มต้นและสิ้นสุด'), false;
+        if (!document.getElementById('halfHours').value)
+          return alert('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'), false;
+      }
+      // สาเหตุการลา — ไม่บังคับ
+    }
+    return true;
+  }
+
+  // ===== BUILD REVIEW =====
+  function buildReview() {
+    const e = currentEmployee;
+    const isHalf = document.getElementById('btnHalfDay').classList.contains('active');
+    const leaveType = document.querySelector('input[name="leaveType"]:checked')?.value || '-';
+    // auto-determine approver chain
+    const l2 = approverDB[e.l2ApproverId];
+    let toVal, approverChainHtml;
+    if (e.approvalWorkflow === 'type1') {
+      const l1 = approverDB[e.l1ApproverId];
+      toVal = `${l1.name} (${l1.position}) → ${l2.name} (${l2.position})`;
+      approverChainHtml = `${l1.name} <span style="color:#9aa5b4;">→</span> ${l2.name}`;
+    } else {
+      toVal = `${l2.name} (${l2.position})`;
+      approverChainHtml = l2.name;
+    }
+    let dur = '';
+    if (isHalf) {
+      const s = document.getElementById('startTime').value;
+      const e = document.getElementById('endTime').value;
+      const hrs = document.getElementById('halfHours').value;
+      const hDisplay = parseFloat(hrs) >= 1
+        ? `${Math.floor(hrs)} ชม. ${Math.round((hrs % 1) * 60)} นาที`
+        : `${Math.round(hrs * 60)} นาที`;
+      dur = `ลาเป็นรายชั่วโมง ${hDisplay} (${s}–${e} น.) วันที่ ${document.getElementById('halfDate').value}`;
+    } else {
+      dur = `${document.getElementById('fullDays').value || '-'} วัน  (${document.getElementById('startDate').value} — ${document.getElementById('endDate').value})`;
+    }
+    const docs = [...document.querySelectorAll('input[name="docs"]:checked')].map(c => c.value).join(', ') || 'ไม่มี';
+
+    document.getElementById('reviewContent').innerHTML = `
+      <div class="summary-section">
+        <h3>👤 ข้อมูลพนักงาน</h3>
+        <table class="summary-table">
+          <tr><td>ชื่อ-นามสกุล</td><td>${e.title} ${e.name}</td></tr>
+          <tr><td>รหัสพนักงาน</td><td>${e.empId}</td></tr>
+          <tr><td>ตำแหน่ง</td><td>${e.position}</td></tr>
+          <tr><td>แผนก/ฝ่าย</td><td>${e.department}</td></tr>
+          <tr><td>หน่วยงาน</td><td>${e.unit}</td></tr>
+          <tr><td>เส้นทางอนุมัติ</td><td>${approverChainHtml}</td></tr>
+        </table>
+      </div>
+      <div class="summary-section">
+        <h3>📅 รายละเอียดการลา</h3>
+        <table class="summary-table">
+          <tr><td>วันที่ยื่น</td><td>${document.getElementById('submitDate').value}</td></tr>
+          <tr><td>ประเภท</td><td>${leaveType}</td></tr>
+          <tr><td>ระยะเวลา</td><td>${dur}</td></tr>
+          <tr><td>สาเหตุ</td><td>${document.getElementById('leaveReason').value}</td></tr>
+          <tr><td>เอกสารแนบ</td><td>${docs}</td></tr>
+          <tr><td>ที่พักขณะลา</td><td>${document.getElementById('stayAddress').value || '-'}</td></tr>
+          <tr><td>โทรศัพท์</td><td>${document.getElementById('contactPhone').value || '-'}</td></tr>
+        </table>
+      </div>`;
+  }
+
+  // ===== NAVIGATION =====
+  function nextStep() {
+    if (!validateStep(currentStep)) return;
+    if (currentStep === totalSteps) { submitForm(); return; }
+    currentStep++;
+    if (currentStep === 3) buildReview();
+    updateUI();
+  }
+  function prevStep() {
+    if (currentStep > 1) { currentStep--; updateUI(); }
+  }
+  function updateUI() {
+    document.querySelectorAll('.section').forEach((s, i) =>
+      s.classList.toggle('active', i + 1 === currentStep));
+    document.querySelectorAll('.step').forEach((s, i) => {
+      s.classList.remove('active','done');
+      if (i + 1 < currentStep) s.classList.add('done');
+      if (i + 1 === currentStep) s.classList.add('active');
+    });
+    document.getElementById('btnBack').style.visibility = currentStep > 1 ? 'visible' : 'hidden';
+    document.getElementById('stepIndicator').textContent = `ขั้นตอน ${currentStep} จาก ${totalSteps}`;
+    const nb = document.getElementById('btnNext');
+    if (currentStep === totalSteps) { nb.textContent = '📨 ส่งใบลา'; nb.className = 'btn btn-success'; }
+    else { nb.textContent = 'ถัดไป →'; nb.className = 'btn btn-primary'; }
+  }
+
+  /* ===== MOCK EMAIL NOTIFICATION ===== */
+  function showEmailToast(toName, toEmail, subject, body) {
+    const container = document.getElementById('emailToastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'email-toast';
+    toast.innerHTML =
+      '<div class="email-toast-hdr">📧 ส่งอีเมลแจ้งเตือนแล้ว <span style="font-weight:400;color:#64748b;font-size:10px;">(จำลอง)</span></div>' +
+      '<div class="email-toast-to">ถึง: ' + toName + ' &lt;' + toEmail + '&gt;</div>' +
+      '<div class="email-toast-sub">📌 ' + subject + '</div>' +
+      (body ? '<div class="email-toast-body">' + body + '</div>' : '');
+    container.appendChild(toast);
+    setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); }, 5500);
+  }
+
+
+  // ── CHANGE PASSWORD ──────────────────────────────────────────
+  function showChangePwd() {
+    document.getElementById('cpOld').value = '';
+    document.getElementById('cpNew').value = '';
+    document.getElementById('cpConfirm').value = '';
+    document.getElementById('cpError').style.display = 'none';
+    document.getElementById('cpSuccess').style.display = 'none';
+    document.getElementById('changePwdModal').style.display = 'flex';
+  }
+  function closeChangePwd() {
+    document.getElementById('changePwdModal').style.display = 'none';
+  }
+  async function doChangePwd() {
+    const oldPwd  = document.getElementById('cpOld').value.trim();
+    const newPwd  = document.getElementById('cpNew').value.trim();
+    const confirm = document.getElementById('cpConfirm').value.trim();
+    const errEl   = document.getElementById('cpError');
+    const okEl    = document.getElementById('cpSuccess');
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+
+    if (!oldPwd || !newPwd || !confirm) { errEl.textContent = 'กรุณากรอกให้ครบทุกช่อง'; errEl.style.display='block'; return; }
+    if (newPwd.length < 6) { errEl.textContent = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.style.display='block'; return; }
+    if (newPwd !== confirm) { errEl.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน'; errEl.style.display='block'; return; }
+
+    // ตรวจรหัสผ่านเดิมกับ API
+    try {
+      const check = await apiGet({ action: 'login', id: currentEmployee.empId, password: oldPwd });
+      if (!check.ok) { errEl.textContent = 'รหัสผ่านเดิมไม่ถูกต้อง'; errEl.style.display='block'; return; }
+
+      const res = await apiPost({ action: 'resetPassword', empId: currentEmployee.empId, newPassword: newPwd });
+      if (res.ok) {
+        okEl.style.display = 'block';
+        setTimeout(closeChangePwd, 1500);
+      } else {
+        errEl.textContent = res.error || 'เกิดข้อผิดพลาด'; errEl.style.display='block';
+      }
+    } catch(e) {
+      errEl.textContent = 'เชื่อมต่อ API ไม่ได้ กรุณาลองใหม่'; errEl.style.display='block';
+    }
+  }
+
+  async function submitForm() {
+    var emp = currentEmployee;
+    var ticketNum = 'LA-' + String(Math.floor(Math.random() * 90000) + 10000);
+    document.getElementById('ticketId').textContent = ticketNum;
+
+    // ส่งข้อมูลไป API (ถ้าตั้งค่า URL แล้ว)
+    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
+      try {
+        const leaveData = {
+          empId:      emp.empId,
+          empName:    emp.title + emp.name,
+          dept:       emp.department,
+          section:    emp.section || '',
+          position:   emp.position,
+          leaveType:  document.getElementById('leaveType')?.value || '',
+          startDate:  document.getElementById('startDate')?.value || '',
+          endDate:    document.getElementById('endDate')?.value || '',
+          days:       document.getElementById('leaveDays')?.textContent || '',
+          reason:     document.getElementById('leaveReason')?.value || '',
+          l1AppId:    emp.l1ApproverId || '',
+          l2AppId:    emp.l2ApproverId || '',
+          workflow:   emp.approvalWorkflow || ''
+        };
+        await apiPost({ action: 'submitLeave', data: leaveData });
+      } catch(e) { console.warn('API submit failed, proceeding with local state', e); }
+    }
+    document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById('submittedView').classList.add('show');
+    document.getElementById('formNav').style.display = 'none';
+
+    // Mock email notifications
+    var leaveLabel = { sick:'ลาป่วย', personal:'ลากิจ', vacation:'ลาพักผ่อน', maternity:'ลาคลอด' };
+    var lType = leaveLabel[document.getElementById('leaveType') ? document.getElementById('leaveType').value : 'sick'] || 'ใบลา';
+
+    if (emp.approvalWorkflow === 'type1' && emp.l1ApproverId) {
+      var l1 = approverDB[emp.l1ApproverId];
+      showEmailToast(
+        l1.name, l1.name.toLowerCase().replace(/ /g,'') + '@planconsultants.co.th',
+        '[แจ้งขออนุมัติใบลา] ' + ticketNum + ' — ' + emp.name,
+        emp.name + ' ยื่น' + lType + ' รอการพิจารณาจากท่าน'
+      );
+    }
+    if (emp.l2ApproverId) {
+      var l2 = approverDB[emp.l2ApproverId];
+      if (emp.approvalWorkflow === 'type2') {
+        showEmailToast(
+          l2.name, l2.name.toLowerCase().replace(/ /g,'') + '@planconsultants.co.th',
+          '[แจ้งขออนุมัติใบลา] ' + ticketNum + ' — ' + emp.name,
+          emp.name + ' ยื่น' + lType + ' รอการพิจารณาจากท่าน (อนุมัติโดยตรง)'
+        );
+      }
+    }
+    // Confirm to employee
+    setTimeout(function(){
+      showEmailToast(
+        emp.name, emp.email || emp.name.toLowerCase().replace(/ /g,'') + '@planconsultants.co.th',
+        '[ยืนยัน] ระบบได้รับใบลาของท่านแล้ว — ' + ticketNum,
+        'ใบลาของท่านอยู่ระหว่างการพิจารณา ระบบจะแจ้งผลให้ทราบทางอีเมลอีกครั้ง'
+      );
+    }, 800);
+  }
+</script>
+</body>
+</html>

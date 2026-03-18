@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบแจ้งลาออนไลน์ — Plan Consultants Co.,Ltd.</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'TH SarabunPSK', sans-serif;
+      background: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── Background decoration ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(168,85,247,0.12), transparent);
+      pointer-events: none;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Logo / Header ── */
+    .logo-area {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .logo-main {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      line-height: 1.3;
+    }
+    .logo-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: #334155;
+      margin: 0 0 28px;
+    }
+
+    /* ── Form ── */
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 7px;
+      font-weight: 500;
+    }
+    .field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0f172a;
+      border: 1.5px solid #334155;
+      border-radius: 10px;
+      color: #f1f5f9;
+      font-size: 15px;
+      transition: border-color .2s;
+      outline: none;
+    }
+    .field input:focus { border-color: #3b82f6; }
+
+    .pwd-wrap { position: relative; display: flex; align-items: center; }
+    .pwd-wrap input { padding-right: 44px; }
+    .eye-btn {
+      position: absolute; right: 12px;
+      background: none; border: none;
+      cursor: pointer; font-size: 18px;
+      color: #64748b; padding: 0; line-height: 1;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-login:hover { opacity: .9; }
+    .btn-login:active { transform: scale(.98); }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Error / Info ── */
+    .error-msg {
+      display: none;
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.3);
+      color: #f87171;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 14px;
+      text-align: center;
+    }
+    .error-msg.show { display: block; }
+
+    /* ── Role badges (shown after detect) ── */
+    .role-badge {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(59,130,246,.1);
+      border: 1px solid rgba(59,130,246,.25);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 14px;
+      font-size: 14px;
+      color: #93c5fd;
+    }
+    .role-badge.show { display: flex; }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      color: #475569;
+      font-size: 12px;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-area">
+    <span class="logo-icon">📋</span>
+    <div class="logo-main">ระบบแจ้งลาออนไลน์</div>
+    <div class="logo-sub">Plan Consultants Co.,Ltd.</div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="field">
+    <label>รหัสพนักงาน</label>
+    <input type="text" id="loginId" placeholder="เช่น EMP001"
+      autocomplete="username"
+      onkeydown="if(event.key==='Enter')document.getElementById('loginPwd').focus()" />
+  </div>
+
+  <div class="field">
+    <label>รหัสผ่าน</label>
+    <div class="pwd-wrap">
+      <input type="password" id="loginPwd" placeholder="รหัสผ่าน"
+        autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()" />
+      <button class="eye-btn" type="button" onclick="togglePwd(this)" tabindex="-1">👁️</button>
+    </div>
+  </div>
+
+  <button class="btn-login" id="loginBtn" onclick="doLogin()">เข้าสู่ระบบ →</button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="role-badge" id="roleBadge">
+    <span id="roleIcon">👤</span>
+    <span id="roleText">กำลังเข้าสู่ระบบ...</span>
+  </div>
+</div>
+
+<div class="footer">© Plan Consultants Co.,Ltd. — ระบบลาออนไลน์</div>
+
+<script>
+  // ── API CONFIG ──────────────────────────────────────────────
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec';
+
+  // ── Role → หน้าที่ redirect ──────────────────────────────────
+  const ROLE_PAGES = {
+    'employee':    'ใบลางาน.html',
+    'manager_l1':  'อนุมัติใบลา.html',
+    'manager_l2':  'อนุมัติใบลา.html',
+    'admin':       'admin-ใบลา.html',
+    'superadmin':  'superadmin-ใบลา.html',
+  };
+
+  const ROLE_LABELS = {
+    'employee':   { icon: '👤', label: 'พนักงาน — กำลังเข้าสู่หน้ายื่นใบลา...' },
+    'manager_l1': { icon: '👔', label: 'ผู้อนุมัติ L1 — กำลังเข้าสู่หน้าอนุมัติ...' },
+    'manager_l2': { icon: '👔', label: 'ผู้อนุมัติ L2 — กำลังเข้าสู่หน้าอนุมัติ...' },
+    'admin':      { icon: '🛠️', label: 'Admin — กำลังเข้าสู่หน้าจัดการ...' },
+    'superadmin': { icon: '👑', label: 'Super Admin — กำลังเข้าสู่ระบบ...' },
+  };
+
+  function togglePwd(btn) {
+    const inp = btn.previousElementSibling;
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁️'; }
+  }
+
+  async function doLogin() {
+    const id  = document.getElementById('loginId').value.trim().toUpperCase();
+    const pwd = document.getElementById('loginPwd').value;
+    const errEl = document.getElementById('errorMsg');
+    const btn   = document.getElementById('loginBtn');
+
+    errEl.classList.remove('show');
+    document.getElementById('roleBadge').classList.remove('show');
+
+    if (!id || !pwd) {
+      errEl.textContent = '❌ กรุณากรอกรหัสพนักงานและรหัสผ่าน';
+      errEl.classList.add('show'); return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบ...';
+
+    try {
+      const qs = `action=login&id=${encodeURIComponent(id)}&password=${encodeURIComponent(pwd)}`;
+      const res = await fetch(API_URL + '?' + qs);
+      const data = await res.json();
+
+      if (!data.ok) {
+        errEl.textContent = '❌ ' + (data.error || 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = 'เข้าสู่ระบบ →';
+        return;
+      }
+
+      const user = data.user;
+      const role = (user.role || 'employee').toLowerCase();
+      const page = ROLE_PAGES[role] || 'ใบลางาน.html';
+      const info = ROLE_LABELS[role] || { icon: '👤', label: 'กำลังเข้าสู่ระบบ...' };
+
+      // แสดง role badge
+      document.getElementById('roleIcon').textContent = info.icon;
+      document.getElementById('roleText').textContent = info.label;
+      document.getElementById('roleBadge').classList.add('show');
+      btn.innerHTML = 'เข้าสู่ระบบ →';
+
+      // เก็บ session ไว้ให้หน้าปลายทางข้าม login
+      sessionStorage.setItem('pcAuth', JSON.stringify({
+        empId: user.empId, name: user.name, role: user.role,
+        title: user.title, position: user.position,
+        dept: user.dept, section: user.section,
+        phone: user.phone, email: user.email,
+        workflow: user.workflow, l1Id: user.l1Id, l2Id: user.l2Id
+      }));
+
+      // Redirect หลัง 800ms
+      setTimeout(() => { window.location.href = page; }, 800);
+
+    } catch (e) {
+      console.error(e);
+      errEl.textContent = '❌ เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบ Internet';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = 'เข้าสู่ระบบ →';
+    }
+  }
+</script>
+</body>
+</html>

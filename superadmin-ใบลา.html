@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin — ระบบจัดการใบลา</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Sarabun',Arial,sans-serif;background:#0f172a;font-size:15px;color:#e2e8f0;min-height:100vh;}
+
+    /* ===== LOGIN ===== */
+    #loginScreen{
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#4c1d95 100%);
+    }
+    .login-card{
+      background:#1e293b;border:1px solid #334155;border-radius:18px;
+      box-shadow:0 20px 60px rgba(0,0,0,.6);padding:46px 42px;
+      width:100%;max-width:420px;text-align:center;
+    }
+    .sa-crown{font-size:52px;margin-bottom:12px;}
+    .login-title{font-size:22px;font-weight:800;color:#f8fafc;margin-bottom:4px;}
+    .login-sub{font-size:13px;color:#94a3b8;margin-bottom:28px;}
+    .login-field{margin-bottom:14px;text-align:left;}
+    .login-field label{font-size:12px;font-weight:700;color:#94a3b8;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+    .login-field input{
+      width:100%;padding:12px 14px;background:#0f172a;border:1.5px solid #334155;
+      border-radius:8px;font-size:15px;font-family:inherit;color:#f1f5f9;outline:none;
+      transition:border-color .2s;
+    }
+    .login-field input:focus{border-color:#a855f7;}
+    .btn-sa-login{
+      width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);
+      color:white;border:none;border-radius:8px;font-size:16px;font-weight:800;
+      font-family:inherit;cursor:pointer;margin-top:6px;letter-spacing:.3px;
+      transition:opacity .15s;
+    }
+    .btn-sa-login:hover{opacity:.88;}
+    .login-err{background:#450a0a;border:1px solid #7f1d1d;color:#fca5a5;border-radius:8px;
+      padding:10px 14px;font-size:13px;margin-top:12px;display:none;}
+    .login-err.show{display:block;}
+    .hint-box{background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;
+      padding:12px 16px;font-size:12px;color:#a5b4fc;margin-top:18px;text-align:left;}
+    .hint-box strong{display:block;margin-bottom:5px;}
+    .hint-box code{background:#312e81;border-radius:4px;padding:1px 6px;color:#c4b5fd;}
+
+    /* ===== TOP BAR ===== */
+    .top-bar{
+      background:linear-gradient(90deg,#0f172a,#1e1b4b);color:white;
+      padding:14px 28px;display:flex;align-items:center;
+      justify-content:space-between;position:sticky;top:0;z-index:200;
+      border-bottom:1px solid #334155;box-shadow:0 2px 12px rgba(0,0,0,.5);
+    }
+    .tb-left{display:flex;align-items:center;gap:14px;}
+    .sa-badge{background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:20px;
+      padding:4px 14px;font-size:11px;font-weight:900;letter-spacing:.5px;color:white;}
+    .tb-title{font-size:15px;font-weight:800;color:#f8fafc;}
+    .tb-logo-text{display:flex;flex-direction:column;gap:1px;}
+    .tb-logo-text .tl-main{font-size:14px;font-weight:700;color:#f8fafc;}
+    .tb-logo-text .tl-sub{font-size:11px;color:rgba(255,255,255,.5);}
+    .tb-divider{width:1px;height:28px;background:rgba(255,255,255,.2);margin:0 4px;}
+
+    /* ===== MOCK EMAIL TOAST ===== */
+    #emailToastContainer{
+      position:fixed;top:20px;right:20px;z-index:9999;
+      display:flex;flex-direction:column;gap:10px;pointer-events:none;
+    }
+    .email-toast{
+      background:#1e293b;border:1px solid #334155;border-left:4px solid #22c55e;
+      border-radius:10px;padding:12px 16px;min-width:290px;max-width:370px;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      animation:toastIn .35s ease,toastOut .4s ease 5s forwards;
+    }
+    .email-toast-hdr{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#22c55e;margin-bottom:5px;}
+    .email-toast-to{font-size:11px;color:#94a3b8;}
+    .email-toast-sub{font-size:12px;color:#e2e8f0;margin-top:3px;}
+    .email-toast-body{font-size:11px;color:#64748b;margin-top:4px;line-height:1.4;}
+    @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(40px)}}
+    .tb-right{display:flex;align-items:center;gap:12px;}
+    .sys-status-dot{width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;box-shadow:0 0 8px #22c55e;}
+    .sys-status-dot.offline{background:#ef4444;box-shadow:0 0 8px #ef4444;}
+    .sys-status-dot.maintenance{background:#f59e0b;box-shadow:0 0 8px #f59e0b;}
+    .sys-status-txt{font-size:12px;color:#94a3b8;}
+    .user-chip{background:rgba(255,255,255,.08);border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;}
+    .btn-logout{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);
+      color:#fca5a5;border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:inherit;transition:background .15s;}
+    .btn-logout:hover{background:rgba(239,68,68,.3);}
+
+    /* ===== MAIN ===== */
+    #mainApp{display:none;}
+
+    /* ===== SIDEBAR + CONTENT ===== */
+    .app-layout{display:flex;min-height:calc(100vh - 53px);}
+    .sidebar{
+      width:220px;background:#1e293b;border-right:1px solid #334155;
+      padding:20px 0;flex-shrink:0;position:sticky;top:53px;height:calc(100vh - 53px);overflow-y:auto;
+    }
+    .sidebar-group-label{font-size:10px;font-weight:700;color:#475569;
+      text-transform:uppercase;letter-spacing:.8px;padding:14px 20px 6px;}
+    .nav-item{
+      display:flex;align-items:center;gap:10px;padding:11px 20px;
+      font-size:14px;font-weight:600;color:#94a3b8;cursor:pointer;
+      border-left:3px solid transparent;transition:all .15s;
+    }
+    .nav-item:hover{color:#e2e8f0;background:rgba(255,255,255,.05);}
+    .nav-item.active{color:#a855f7;border-left-color:#a855f7;background:rgba(168,85,247,.08);}
+    .nav-icon{font-size:16px;width:20px;text-align:center;}
+    .nav-badge{margin-left:auto;background:#ef4444;border-radius:10px;
+      padding:2px 7px;font-size:10px;font-weight:700;color:white;}
+
+    .content{flex:1;padding:28px 32px 60px;min-width:0;}
+
+    /* ===== PAGE HEADER ===== */
+    .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;}
+    .page-hdr h1{font-size:20px;font-weight:800;color:#f1f5f9;}
+    .page-hdr p{font-size:13px;color:#64748b;margin-top:2px;}
+
+    /* ===== STAT STRIP ===== */
+    .stat-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+    .stat-tile{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px 18px;}
+    .stat-tile .num{font-size:28px;font-weight:800;color:#f1f5f9;}
+    .stat-tile .lbl{font-size:12px;color:#64748b;margin-top:2px;}
+    .stat-tile.purple .num{color:#a855f7;}
+    .stat-tile.green  .num{color:#22c55e;}
+    .stat-tile.amber  .num{color:#f59e0b;}
+    .stat-tile.red    .num{color:#ef4444;}
+
+    /* ===== TABLE ===== */
+    .table-card{background:#1e293b;border:1px solid #334155;border-radius:12px;overflow:auto;margin-bottom:20px;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th{background:#0f172a;padding:11px 14px;text-align:left;font-size:11px;
+      font-weight:700;color:#64748b;border-bottom:1px solid #334155;white-space:nowrap;text-transform:uppercase;letter-spacing:.4px;}
+    td{padding:11px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:rgba(255,255,255,.03);}
+
+    /* ===== BADGES ===== */
+    .badge{display:inline-block;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:700;}
+    .b-emp{background:#1e3a5f;color:#93c5fd;}
+    .b-mgr1{background:#14532d;color:#86efac;}
+    .b-mgr2{background:#064e3b;color:#6ee7b7;}
+    .b-admin{background:#3b1764;color:#d8b4fe;}
+    .b-sa{background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;}
+    .b-active{background:#14532d;color:#86efac;}
+    .b-suspended{background:#450a0a;color:#fca5a5;}
+
+    /* ===== BUTTONS ===== */
+    .btn{padding:9px 18px;border-radius:8px;font-family:inherit;font-size:13px;
+      font-weight:700;cursor:pointer;border:none;transition:opacity .15s;}
+    .btn:hover{opacity:.85;}
+    .btn-primary{background:#7c3aed;color:white;}
+    .btn-danger {background:#b91c1c;color:white;}
+    .btn-warning{background:#d97706;color:white;}
+    .btn-ghost  {background:rgba(255,255,255,.07);color:#cbd5e1;border:1px solid #334155;}
+    .btn-success{background:#15803d;color:white;}
+    .btn-sm{padding:5px 11px;font-size:12px;border-radius:6px;}
+
+    /* ===== SEARCH & FILTER BAR ===== */
+    .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+    .sa-input{
+      padding:9px 13px;background:#0f172a;border:1.5px solid #334155;
+      border-radius:8px;font-size:13px;font-family:inherit;color:#e2e8f0;
+      outline:none;transition:border-color .2s;
+    }
+    .sa-input:focus{border-color:#a855f7;}
+    .filter-chip{
+      padding:7px 14px;border-radius:20px;border:1.5px solid #334155;
+      background:#1e293b;font-size:12px;font-family:inherit;cursor:pointer;
+      font-weight:600;color:#94a3b8;transition:all .15s;
+    }
+    .filter-chip:hover{border-color:#a855f7;color:#a855f7;}
+    .filter-chip.active{background:#7c3aed;color:white;border-color:#7c3aed;}
+
+    /* ===== MODAL ===== */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);
+      display:none;align-items:center;justify-content:center;z-index:999;padding:20px;}
+    .modal-overlay.show{display:flex;}
+    .modal-box{
+      background:#1e293b;border:1px solid #334155;border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.7);padding:28px 32px;width:100%;max-width:540px;
+      max-height:90vh;overflow-y:auto;
+    }
+    .modal-title{font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:4px;}
+    .modal-sub  {font-size:13px;color:#64748b;margin-bottom:22px;}
+    .form-row2  {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .form-full  {margin-bottom:12px;}
+    .sa-label   {font-size:12px;font-weight:700;color:#94a3b8;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+    .sa-select,.sa-textarea{
+      width:100%;padding:10px 13px;background:#0f172a;border:1.5px solid #334155;
+      border-radius:8px;font-size:14px;font-family:inherit;color:#e2e8f0;outline:none;
+      transition:border-color .2s;
+    }
+    .sa-select:focus,.sa-textarea:focus{border-color:#a855f7;}
+    .sa-textarea{resize:vertical;min-height:70px;}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+    /* ===== CONFIRM DIALOG ===== */
+    .confirm-box{
+      background:#1e293b;border:1px solid #7f1d1d;border-radius:14px;
+      box-shadow:0 20px 60px rgba(0,0,0,.7);padding:28px 32px;width:100%;max-width:400px;text-align:center;
+    }
+    .confirm-icon{font-size:42px;margin-bottom:10px;}
+    .confirm-title{font-size:17px;font-weight:800;color:#fca5a5;margin-bottom:8px;}
+    .confirm-msg  {font-size:13px;color:#94a3b8;margin-bottom:22px;line-height:1.6;}
+
+    /* ===== SYSTEM CONTROL ===== */
+    .sys-panel{
+      background:#1e293b;border:1px solid #334155;border-radius:14px;padding:28px 30px;margin-bottom:20px;
+    }
+    .sys-panel-title{font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:16px;}
+    .sys-big-status{
+      display:flex;align-items:center;gap:20px;padding:20px 24px;
+      border-radius:12px;margin-bottom:20px;
+    }
+    .sys-big-status.online    {background:rgba(34,197,94,.1);border:1.5px solid #16a34a;}
+    .sys-big-status.offline   {background:rgba(239,68,68,.1);border:1.5px solid #dc2626;}
+    .sys-big-status.maintenance{background:rgba(245,158,11,.1);border:1.5px solid #d97706;}
+    .sys-big-icon{font-size:40px;}
+    .sys-state-label{font-size:22px;font-weight:800;}
+    .sys-state-sub  {font-size:13px;color:#64748b;margin-top:2px;}
+    .sys-controls{display:flex;gap:12px;flex-wrap:wrap;}
+
+    /* ===== ACTIVITY LOG ===== */
+    .log-list{display:flex;flex-direction:column;gap:0;}
+    .log-item{
+      display:flex;align-items:flex-start;gap:12px;
+      padding:12px 16px;border-bottom:1px solid #1e293b;
+    }
+    .log-item:last-child{border-bottom:none;}
+    .log-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+    .log-dot.add{background:#22c55e;}
+    .log-dot.edit{background:#a855f7;}
+    .log-dot.del{background:#ef4444;}
+    .log-dot.sys{background:#f59e0b;}
+    .log-dot.pwd{background:#3b82f6;}
+    .log-time{font-size:11px;color:#475569;min-width:80px;}
+    .log-msg {font-size:13px;color:#cbd5e1;flex:1;}
+    .log-by  {font-size:11px;color:#475569;}
+
+    /* ===== ROLE ASSIGN ===== */
+    .role-chip{
+      display:inline-block;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;
+      border:1.5px solid transparent;transition:all .15s;
+    }
+    .role-chip.selected{border-color:#a855f7 !important;box-shadow:0 0 0 3px rgba(168,85,247,.2);}
+
+    /* ===== PWD RESET ===== */
+    .pwd-result{
+      background:#0f172a;border:1.5px solid #22c55e;border-radius:10px;
+      padding:16px 20px;display:none;margin-top:16px;
+    }
+    .pwd-result.show{display:block;}
+    .pwd-code{font-size:22px;font-weight:800;color:#22c55e;letter-spacing:3px;font-family:monospace;}
+
+    /* ===== TOGGLE ===== */
+    .toggle-wrap{display:flex;align-items:center;gap:12px;}
+    .toggle{width:44px;height:24px;background:#334155;border-radius:12px;
+      position:relative;cursor:pointer;transition:background .2s;border:none;}
+    .toggle.on{background:#7c3aed;}
+    .toggle::after{content:'';position:absolute;top:3px;left:3px;
+      width:18px;height:18px;background:white;border-radius:50%;transition:left .2s;}
+    .toggle.on::after{left:23px;}
+
+    /* ===== SECTION TITLE ===== */
+    .sec-title{font-size:14px;font-weight:700;color:#94a3b8;text-transform:uppercase;
+      letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #334155;}
+
+    /* Responsive */
+    @media(max-width:768px){
+      .app-layout{flex-direction:column;}
+      .sidebar{width:100%;height:auto;position:static;display:flex;flex-wrap:wrap;gap:0;padding:8px;}
+      .sidebar-group-label{display:none;}
+      .nav-item{border-left:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:12px;}
+      .nav-item.active{border-bottom-color:#a855f7;}
+      .content{padding:16px;}
+      .form-row2{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="sa-crown">👑</div>
+    <div class="login-title">Super Admin</div>
+    <div class="login-sub">ระบบจัดการใบลา — สิทธิ์สูงสุด</div>
+    <div class="login-field">
+      <label>รหัส Super Admin</label>
+      <input type="text" id="saId" placeholder="SADMIN01" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="off"/>
+    </div>
+    <div class="login-field">
+      <label>รหัสผ่าน</label>
+      <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+      <input type="password" id="saPwd" placeholder="รหัสผ่าน"
+        onkeydown="if(event.key==='Enter')doLogin()"
+        style="width:100%;padding-right:42px;" />
+      <button type="button" onclick="togglePwd(this)" tabindex="-1"
+        style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:#64748b;padding:0;" title="แสดง/ซ่อนรหัสผ่าน">👁️</button>
+    </div>
+    </div>
+    <button class="btn-sa-login" onclick="doLogin()">👑 เข้าสู่ระบบ Super Admin</button>
+    <div class="login-err" id="loginErr">❌ รหัสหรือรหัสผ่านไม่ถูกต้อง</div>
+    <div class="hint-box">
+      <strong>🧪 ข้อมูลทดสอบ (Demo)</strong>
+      รหัส: <code>SADMIN01</code> &nbsp; รหัสผ่าน: <code>super@1234</code>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="mainApp">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="tb-left">
+      <span style="font-size:22px;">👑</span>
+      <div class="tb-divider"></div>
+      <div class="tb-logo-text">
+        <span class="tl-main">ระบบแจ้งลาออนไลน์ Plan Consultants Co.,Ltd.</span>
+        <span class="tl-sub">หน้าควบคุมระบบ Super Admin</span>
+      </div>
+      <span class="sa-badge">SUPER ADMIN</span>
+    </div>
+    <div class="tb-right">
+      <span class="sys-status-dot" id="sysStatusDot"></span>
+      <span class="sys-status-txt" id="sysStatusTxt">กำลังโหลด...</span>
+      <span class="user-chip" id="tbUser">—</span>
+      <button onclick="showChangePwd()" style="background:none;border:1px solid #475569;border-radius:6px;color:#94a3b8;font-size:12px;padding:4px 10px;cursor:pointer;margin-right:6px;">🔑 เปลี่ยนรหัสผ่าน</button><button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-group-label">จัดการระบบ</div>
+      <div class="nav-item active" onclick="showPage('users',this)">
+        <span class="nav-icon">👥</span> จัดการผู้ใช้งาน
+        <span class="nav-badge" id="navBadgeUsers">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('roles',this)">
+        <span class="nav-icon">🛡️</span> จัดการสิทธิ์
+      </div>
+      <div class="nav-item" onclick="showPage('password',this)">
+        <span class="nav-icon">🔑</span> Reset Password
+      </div>
+      <div class="sidebar-group-label">ควบคุมระบบ</div>
+      <div class="nav-item" onclick="showPage('system',this)">
+        <span class="nav-icon">⚙️</span> ควบคุมระบบ
+      </div>
+      <div class="nav-item" onclick="showPage('log',this)">
+        <span class="nav-icon">📜</span> Activity Log
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content">
+
+      <!-- ─── PAGE: USERS ─── -->
+      <div id="page-users">
+        <div class="page-hdr">
+          <div>
+            <h1>👥 จัดการผู้ใช้งาน</h1>
+            <p>เพิ่ม แก้ไข หรือลบบัญชีผู้ใช้งานในระบบ</p>
+          </div>
+          <button class="btn btn-primary" onclick="openUserModal('add')">+ เพิ่มผู้ใช้ใหม่</button>
+        </div>
+        <div class="stat-strip" id="userStatStrip"></div>
+        <div class="filter-bar">
+          <input class="sa-input" id="userSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / อีเมล..." oninput="renderUsersTable()" style="min-width:220px;"/>
+          <button class="filter-chip active" onclick="setUserFilter('all',this)">ทั้งหมด</button>
+          <button class="filter-chip" onclick="setUserFilter('employee',this)">พนักงาน</button>
+          <button class="filter-chip" onclick="setUserFilter('manager',this)">ผู้จัดการ</button>
+          <button class="filter-chip" onclick="setUserFilter('admin',this)">Admin</button>
+          <button class="filter-chip" onclick="setUserFilter('suspended',this)">ถูกระงับ</button>
+        </div>
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>อีเมล</th>
+                <th>โทรศัพท์</th><th>แผนก/หน่วยงาน</th>
+                <th>สิทธิ์</th><th>สถานะ</th><th>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─── PAGE: ROLES ─── -->
+      <div id="page-roles" style="display:none;">
+        <div class="page-hdr">
+          <div>
+            <h1>🛡️ จัดการสิทธิ์ผู้ใช้งาน</h1>
+            <p>เปลี่ยนบทบาทของผู้ใช้งานในระบบ</p>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <input class="sa-input" id="roleSearch" placeholder="🔍 ค้นหาผู้ใช้..." oninput="renderRolesTable()" style="min-width:220px;"/>
+        </div>
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th>
+                <th>สิทธิ์ปัจจุบัน</th><th>เปลี่ยนเป็น</th><th>บันทึก</th>
+              </tr>
+            </thead>
+            <tbody id="rolesBody"></tbody>
+          </table>
+        </div>
+        <div class="sys-panel" style="margin-top:20px;">
+          <div class="sec-title">📋 คำอธิบายสิทธิ์</div>
+          <table style="font-size:13px;">
+            <tr>
+              <td style="padding:8px 14px;"><span class="badge b-emp">พนักงาน</span></td>
+              <td style="padding:8px 14px;color:#94a3b8;">ยื่นใบลาได้ — เห็นสถานะใบลาตัวเอง</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 14px;"><span class="badge b-mgr1">ผจก.ขั้นต้น</span></td>
+              <td style="padding:8px 14px;color:#94a3b8;">อนุมัติใบลาขั้นต้นของทีมที่รับผิดชอบ</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 14px;"><span class="badge b-mgr2">ผจก.ขั้นสูง</span></td>
+              <td style="padding:8px 14px;color:#94a3b8;">อนุมัติใบลาขั้นสุดท้าย — เห็นภาพรวมทั้งองค์กร</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 14px;"><span class="badge b-admin">Admin</span></td>
+              <td style="padding:8px 14px;color:#94a3b8;">ดูรายงาน โต้แย้ง — ไม่มีสิทธิ์แก้ไขฐานข้อมูล</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 14px;"><span class="badge b-sa">Super Admin</span></td>
+              <td style="padding:8px 14px;color:#94a3b8;">สิทธิ์สูงสุด — เข้าถึงได้ทุกอย่าง</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─── PAGE: PASSWORD ─── -->
+      <div id="page-password" style="display:none;">
+        <div class="page-hdr">
+          <div>
+            <h1>🔑 Reset Password</h1>
+            <p>รีเซ็ตรหัสผ่านสำหรับทุกบัญชีในระบบ</p>
+          </div>
+        </div>
+        <div class="sys-panel">
+          <div class="sec-title">🔍 เลือกผู้ใช้งานที่ต้องการ Reset</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+            <select class="sa-select" id="pwdUserSelect" onchange="loadPwdUser()" style="max-width:320px;">
+              <option value="">— เลือกผู้ใช้งาน —</option>
+            </select>
+            <select class="sa-select" id="pwdMode" style="max-width:200px;">
+              <option value="auto">สุ่มรหัสผ่านใหม่</option>
+              <option value="manual">กำหนดเอง</option>
+            </select>
+          </div>
+          <div id="pwdUserInfo" style="display:none;background:#0f172a;border-radius:10px;padding:14px 18px;margin-bottom:14px;font-size:13px;color:#94a3b8;"></div>
+          <div id="pwdManualWrap" style="display:none;margin-bottom:12px;">
+            <label class="sa-label">รหัสผ่านใหม่</label>
+            <input class="sa-input" type="password" id="pwdManualInput" placeholder="พิมพ์รหัสผ่านใหม่..." style="max-width:280px;"/>
+            <input class="sa-input" type="password" id="pwdManualConfirm" placeholder="ยืนยันรหัสผ่าน..." style="max-width:280px;margin-top:8px;"/>
+          </div>
+          <button class="btn btn-warning" onclick="doResetPwd()">🔑 Reset Password</button>
+          <div class="pwd-result" id="pwdResult">
+            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">รหัสผ่านชั่วคราวใหม่ (แจ้งผู้ใช้ให้เปลี่ยนทันที)</div>
+            <div class="pwd-code" id="pwdCode">—</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="copyPwd()">📋 คัดลอก</button>
+          </div>
+        </div>
+
+        <div class="sys-panel">
+          <div class="sec-title">📋 ประวัติการ Reset ล่าสุด</div>
+          <div class="table-card" style="margin:0;">
+            <table>
+              <thead>
+                <tr><th>วันเวลา</th><th>ผู้ใช้งาน</th><th>Reset โดย</th><th>หมายเหตุ</th></tr>
+              </thead>
+              <tbody id="pwdHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PAGE: SYSTEM ─── -->
+      <div id="page-system" style="display:none;">
+        <div class="page-hdr">
+          <div>
+            <h1>⚙️ ควบคุมระบบ</h1>
+            <p>หยุด เริ่ม หรือตั้งค่าโหมดบำรุงรักษาของระบบ</p>
+          </div>
+        </div>
+
+        <div class="sys-panel">
+          <div class="sys-panel-title">สถานะระบบปัจจุบัน</div>
+          <div class="sys-big-status" id="sysBigStatus">
+            <div class="sys-big-icon" id="sysBigIcon">🟢</div>
+            <div>
+              <div class="sys-state-label" id="sysStateLabel">—</div>
+              <div class="sys-state-sub" id="sysStateSub">—</div>
+            </div>
+          </div>
+          <div class="sys-controls">
+            <button class="btn btn-success" onclick="setSysState('online')">🟢 เปิดระบบ (Online)</button>
+            <button class="btn btn-warning" onclick="setSysState('maintenance')">🟡 โหมดบำรุงรักษา</button>
+            <button class="btn btn-danger"  onclick="setSysState('offline')">🔴 ปิดระบบ (Offline)</button>
+          </div>
+        </div>
+
+        <div class="sys-panel">
+          <div class="sys-panel-title">⚙️ ตั้งค่าระบบ</div>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="toggle-wrap">
+              <button class="toggle on" id="tgl-email" onclick="toggleSetting('email',this)"></button>
+              <span style="font-size:14px;color:#e2e8f0;">📧 ส่งอีเมลแจ้งเตือนเมื่อมีใบลาใหม่</span>
+            </div>
+            <div class="toggle-wrap">
+              <button class="toggle on" id="tgl-quota" onclick="toggleSetting('quota',this)"></button>
+              <span style="font-size:14px;color:#e2e8f0;">⚠️ เตือนเมื่อโควต้าวันลาเหลือน้อย (&lt;3 วัน)</span>
+            </div>
+            <div class="toggle-wrap">
+              <button class="toggle" id="tgl-auto" onclick="toggleSetting('auto',this)"></button>
+              <span style="font-size:14px;color:#e2e8f0;">🤖 อนุมัติอัตโนมัติเมื่อไม่มีการตอบสนองเกิน 5 วัน</span>
+            </div>
+            <div class="toggle-wrap">
+              <button class="toggle on" id="tgl-log" onclick="toggleSetting('log',this)"></button>
+              <span style="font-size:14px;color:#e2e8f0;">📜 บันทึก Activity Log ทุกการกระทำ</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sys-panel">
+          <div class="sys-panel-title">📊 ข้อมูลระบบ</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+            <div style="background:#0f172a;border-radius:10px;padding:14px 18px;">
+              <div style="font-size:11px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">เวอร์ชั่นระบบ</div>
+              <div style="font-size:18px;font-weight:800;color:#a855f7;margin-top:4px;">v2.0.0</div>
+            </div>
+            <div style="background:#0f172a;border-radius:10px;padding:14px 18px;">
+              <div style="font-size:11px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">ผู้ใช้งานออนไลน์</div>
+              <div style="font-size:18px;font-weight:800;color:#22c55e;margin-top:4px;" id="sysOnlineUsers">—</div>
+            </div>
+            <div style="background:#0f172a;border-radius:10px;padding:14px 18px;">
+              <div style="font-size:11px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">ใบลาทั้งหมด</div>
+              <div style="font-size:18px;font-weight:800;color:#f59e0b;margin-top:4px;" id="sysLeaveCount">—</div>
+            </div>
+            <div style="background:#0f172a;border-radius:10px;padding:14px 18px;">
+              <div style="font-size:11px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">อัปเดตล่าสุด</div>
+              <div style="font-size:14px;font-weight:800;color:#94a3b8;margin-top:4px;">13 มี.ค. 2569</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── PAGE: LOG ─── -->
+      <div id="page-log" style="display:none;">
+        <div class="page-hdr">
+          <div>
+            <h1>📜 Activity Log</h1>
+            <p>บันทึกการกระทำของผู้ดูแลระบบทุกรายการ</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearLog()">🗑️ ล้าง Log</button>
+        </div>
+        <div class="sys-panel" style="padding:0;">
+          <div class="log-list" id="activityLog"></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /app-layout -->
+</div><!-- /mainApp -->
+
+<!-- ===== USER MODAL (Add/Edit) ===== -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal-box">
+    <div class="modal-title" id="userModalTitle">เพิ่มผู้ใช้งานใหม่</div>
+    <div class="modal-sub" id="userModalSub">กรอกข้อมูลผู้ใช้งาน</div>
+    <input type="hidden" id="editUserId"/>
+    <div class="form-row2">
+      <div>
+        <label class="sa-label">รหัสผู้ใช้ <span style="color:#ef4444">*</span></label>
+        <input class="sa-input" id="fId" placeholder="เช่น EMP004" style="width:100%;"/>
+      </div>
+      <div>
+        <label class="sa-label">สิทธิ์ <span style="color:#ef4444">*</span></label>
+        <select class="sa-select" id="fRole">
+          <option value="employee">พนักงาน</option>
+          <option value="manager_l1">ผจก.ขั้นต้น</option>
+          <option value="manager_l2">ผจก.ขั้นสูง</option>
+          <option value="admin">Admin</option>
+          <option value="superadmin">Super Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row2">
+      <div>
+        <label class="sa-label">คำนำหน้า</label>
+        <select class="sa-select" id="fTitle">
+          <option value="นาย">นาย</option>
+          <option value="นาง">นาง</option>
+          <option value="นางสาว">นางสาว</option>
+        </select>
+      </div>
+      <div>
+        <label class="sa-label">ชื่อ-นามสกุล <span style="color:#ef4444">*</span></label>
+        <input class="sa-input" id="fName" placeholder="ชื่อเต็ม" style="width:100%;"/>
+      </div>
+    </div>
+    <div class="form-row2">
+      <div>
+        <label class="sa-label">อีเมล <span style="color:#ef4444">*</span></label>
+        <input class="sa-input" id="fEmail" type="email" placeholder="email@company.com" style="width:100%;"/>
+      </div>
+      <div>
+        <label class="sa-label">เบอร์โทรศัพท์</label>
+        <input class="sa-input" id="fPhone" placeholder="0812345678" style="width:100%;"/>
+      </div>
+    </div>
+    <div class="form-row2">
+      <div>
+        <label class="sa-label">ฝ่าย (Department)</label>
+        <select class="sa-input" id="fDept" style="width:100%;" onchange="updateSectionDropdown()">
+          <option value="">— เลือกฝ่าย —</option>
+          <option value="ฝ่ายบริหารและควบคุมการก่อสร้าง">ฝ่ายบริหารและควบคุมการก่อสร้าง</option>
+          <option value="ฝ่ายทรัพยากรบุคคลและการเงิน">ฝ่ายทรัพยากรบุคคลและการเงิน</option>
+          <option value="แผนกควบคุมคุณภาพ (QC)">แผนกควบคุมคุณภาพ (QC)</option>
+          <option value="คณะกรรมการบริหาร">คณะกรรมการบริหาร</option>
+          <option value="IT">IT</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+      <div>
+        <label class="sa-label">แผนก (Section)</label>
+        <select class="sa-input" id="fSection" style="width:100%;">
+          <option value="">— เลือกฝ่ายก่อน —</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row2">
+      <div>
+        <label class="sa-label">ตำแหน่ง</label>
+        <input class="sa-input" id="fPosition" placeholder="เช่น วิศวกรโยธา" style="width:100%;"/>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-full">
+      <label class="sa-label">รหัสผ่านเริ่มต้น <span id="pwdRequiredLabel" style="color:#ef4444">*</span></label>
+      <input class="sa-input" id="fPassword" type="password" placeholder="รหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)" style="width:100%;"/>
+    </div>
+    <div class="form-full">
+      <label class="sa-label">สถานะ</label>
+      <select class="sa-select" id="fStatus">
+        <option value="active">เปิดใช้งาน (Active)</option>
+        <option value="suspended">ระงับการใช้งาน (Suspended)</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('userModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONFIRM MODAL ===== -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">⚠️</div>
+    <div class="confirm-title" id="confirmTitle">ยืนยันการดำเนินการ?</div>
+    <div class="confirm-msg" id="confirmMsg">คุณแน่ใจหรือไม่?</div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-ghost" onclick="closeModal('confirmModal')">ยกเลิก</button>
+      <button class="btn btn-danger" id="confirmOkBtn">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SYSTEM CONFIRM ===== -->
+<div class="modal-overlay" id="sysConfirmModal">
+  <div class="confirm-box" style="border-color:#d97706;">
+    <div class="confirm-icon" id="sysConfirmIcon">⚙️</div>
+    <div class="confirm-title" id="sysConfirmTitle" style="color:#fbbf24;">เปลี่ยนสถานะระบบ?</div>
+    <div class="confirm-msg" id="sysConfirmMsg">คุณแน่ใจหรือไม่?</div>
+    <input class="sa-input" id="sysConfirmReason" placeholder="ระบุเหตุผล (บังคับ)..." style="width:100%;margin-bottom:14px;"/>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-ghost" onclick="closeModal('sysConfirmModal')">ยกเลิก</button>
+      <button class="btn btn-warning" id="sysConfirmOkBtn">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// API CONFIG — ใส่ URL Apps Script Web App ที่นี่
+// ============================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec';
+
+async function apiGet(params) {
+  const qs = Object.entries(params).map(([k,v]) => k+'='+encodeURIComponent(v)).join('&');
+  const res = await fetch(API_URL + '?' + qs);
+  return res.json();
+}
+async function apiPost(data) {
+  const res = await fetch(API_URL, { method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+  return res.json();
+}
+
+// ============================================================
+// DATA
+// ============================================================
+const SADMIN_DB = {
+  "SADMIN01": { password: "super@1234", name: "ศักดา ดูแลระบบ", role: "superadmin" }
+};
+
+// ── Department → Sections mapping ────────────────────────────────────────────
+const deptSections = {
+  "ฝ่ายบริหารและควบคุมการก่อสร้าง": [
+    "แผนกปฏิบัติการโครงการ",
+    "แผนกสำรวจปริมาณและราคา (QS)"
+  ],
+  "ฝ่ายทรัพยากรบุคคลและการเงิน": [
+    "แผนกทรัพยากรบุคคล",
+    "แผนกการเงิน-บัญชี"
+  ],
+  "แผนกควบคุมคุณภาพ (QC)": [
+    "แผนกควบคุมคุณภาพ (QC) — สายงานโครงสร้าง",
+    "แผนกควบคุมคุณภาพ (QC) — สายงานไฟฟ้า",
+    "แผนกควบคุมคุณภาพ (QC) — สายงานสถาปัตยกรรม",
+    "แผนกควบคุมคุณภาพ (QC) — สายงานเครื่องกล"
+  ],
+  "คณะกรรมการบริหาร": [
+    "คณะกรรมการบริหาร",
+    "กรรมการที่ปรึกษา",
+    "กรรมการผู้จัดการ",
+    "คณะกรรมการดำเนินงาน",
+    "คณะกรรมการความปลอดภัย"
+  ],
+  "IT": ["ฝ่าย IT"],
+  "อื่นๆ": ["อื่นๆ"]
+};
+
+function updateSectionDropdown(currentVal) {
+  const dept = document.getElementById('fDept').value;
+  const sel  = document.getElementById('fSection');
+  const sections = deptSections[dept] || [];
+  sel.innerHTML = sections.length
+    ? sections.map(s => `<option value="${s}"${s===currentVal?' selected':''}>${s}</option>`).join('')
+    : '<option value="">— ไม่มีแผนกในฝ่ายนี้ —</option>';
+}
+
+let users = [
+  { id:"EMP001", title:"นาย",    name:"สมชาย ใจดี",    email:"somchai@planconsultants.co.th",    phone:"0812345678",
+    dept:"ฝ่ายบริหารและควบคุมการก่อสร้าง", section:"แผนกปฏิบัติการโครงการ",
+    position:"วิศวกรโยธา",         role:"employee",   status:"active", password:"1234" },
+  { id:"EMP002", title:"นางสาว", name:"สุดา มีสุข",     email:"suda@planconsultants.co.th",       phone:"0898765432",
+    dept:"ฝ่ายบริหารและควบคุมการก่อสร้าง", section:"แผนกสำรวจปริมาณและราคา (QS)",
+    position:"สถาปนิก",            role:"employee",   status:"active", password:"1234" },
+  { id:"EMP003", title:"นาง",    name:"วิภา รักงาน",   email:"wipa@planconsultants.co.th",        phone:"0856781234",
+    dept:"ฝ่ายบริหารและควบคุมการก่อสร้าง", section:"แผนกปฏิบัติการโครงการ",
+    position:"ผู้จัดการโครงการ",   role:"manager_l2", status:"active", password:"1234" },
+  { id:"MGR001", title:"นาย",    name:"ธนากร สุขสม",   email:"thanakorn@planconsultants.co.th",   phone:"0811111111",
+    dept:"ฝ่ายบริหารและควบคุมการก่อสร้าง", section:"แผนกปฏิบัติการโครงการ",
+    position:"ผู้จัดการฝ่ายก่อสร้าง", role:"manager_l1", status:"active", password:"mgr001" },
+  { id:"MGR002", title:"นางสาว", name:"ธัญญา สร้างดี", email:"thanya@planconsultants.co.th",      phone:"0833333333",
+    dept:"แผนกควบคุมคุณภาพ (QC)", section:"แผนกควบคุมคุณภาพ (QC) — สายงานโครงสร้าง",
+    position:"ผู้จัดการแผนก QC",   role:"manager_l1", status:"active", password:"mgr002" },
+  { id:"MGR003", title:"นาง",    name:"จิตรา มั่นคง",  email:"jitra@planconsultants.co.th",       phone:"0822222222",
+    dept:"คณะกรรมการบริหาร",       section:"กรรมการผู้จัดการ",
+    position:"กรรมการผู้จัดการ",   role:"manager_l2", status:"active", password:"mgr003" },
+  { id:"ADMIN01", title:"นาย",   name:"ปิยนาถ ระบบดี", email:"admin@planconsultants.co.th",       phone:"0899999999",
+    dept:"IT", section:"ฝ่าย IT",
+    position:"ผู้ดูแลระบบ",        role:"admin",      status:"active", password:"admin1234" },
+  { id:"SADMIN01",title:"นาย",   name:"ศักดา ดูแลระบบ",email:"superadmin@planconsultants.co.th",  phone:"0800000000",
+    dept:"IT", section:"ฝ่าย IT",
+    position:"Super Admin",         role:"superadmin", status:"active", password:"super@1234" },
+];
+
+let systemState = "online"; // online | maintenance | offline
+let settings = { email:true, quota:true, auto:false, log:true };
+let currentSAdmin = null;
+let userFilter = "all";
+let pendingSysState = null;
+
+let pwdResetHistory = [
+  { date:"12 มี.ค. 2569 09:12", userId:"EMP001", userName:"สมชาย ใจดี", by:"ศักดา ดูแลระบบ", note:"ลืมรหัสผ่าน" },
+];
+
+let activityLog = [
+  { time:"13 มี.ค. 2569 08:00", type:"sys",  msg:"Super Admin เข้าสู่ระบบ",          by:"ศักดา ดูแลระบบ" },
+  { time:"12 มี.ค. 2569 09:12", type:"pwd",  msg:"Reset password ของ สมชาย ใจดี (EMP001)", by:"ศักดา ดูแลระบบ" },
+  { time:"10 มี.ค. 2569 14:30", type:"edit", msg:"แก้ไขสิทธิ์ วิภา รักงาน → manager_l2", by:"ศักดา ดูแลระบบ" },
+];
+
+// ============================================================
+// LOGIN / LOGOUT
+// ============================================================
+
+  function togglePwd(btn) {
+    var inp = btn.previousElementSibling;
+    if (!inp) inp = btn.parentElement.querySelector('input');
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁️'; }
+  }
+
+
+  // ── AUTO LOGIN จาก index.html ────────────────────────────
+  (function() {
+    const auth = sessionStorage.getItem('pcAuth');
+    if (!auth) return;
+    try {
+      const u = JSON.parse(auth);
+      if (u.role !== 'superadmin') return;
+      currentSAdmin = { id: u.empId, name: u.name || '', email: u.email || '', role: 'superadmin' };
+      window.addEventListener('DOMContentLoaded', () => {
+        if (typeof apiGet === 'function') {
+          apiGet({action:'getEmployees'}).then(r => {
+            if (r.ok) users = r.data.map(e => ({
+              id: e.empId, title: e.title||'', name: e.name||'',
+              email: e.email||'', phone: e.phone||'',
+              dept: e.dept||'', section: e.section||'', position: e.position||'',
+              role: e.role||'employee', status: e.status||'active', password: ''
+            }));
+          }).catch(()=>{}).finally(() => _afterSALogin(currentSAdmin));
+        } else { _afterSALogin(currentSAdmin); }
+      });
+    } catch(e) {}
+  })();
+
+  async function doLogin() {
+  const id  = document.getElementById('saId').value.trim().toUpperCase();
+  const pwd = document.getElementById('saPwd').value;
+
+  try {
+    const result = await apiGet({ action: 'login', id: id, password: pwd });
+    if (!result.ok || result.user.role !== 'superadmin') {
+      document.getElementById('loginErr').classList.add('show'); return;
+    }
+    const u = result.user;
+    currentSAdmin = { id: u.empId, name: u.name, email: u.email, role: 'superadmin' };
+
+    // โหลดข้อมูลพนักงานทั้งหมด
+    const eRes = await apiGet({ action: 'getEmployees' });
+    if (eRes.ok) {
+      users = eRes.data.map(u => ({
+        id: u.empId, title: u.title, name: u.name,
+        email: u.email, phone: u.phone,
+        dept: u.dept, section: u.section, position: u.position,
+        role: u.role, status: u.status, password: ''
+      }));
+    }
+
+    document.getElementById('loginErr').classList.remove('show');
+    _afterSALogin(currentSAdmin);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loginErr').classList.add('show');
+  }
+}
+
+function _afterSALogin(sa) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('tbUser').textContent = '👑 ' + sa.name;
+  initApp();
+}
+function doLogout() { currentSAdmin = null; location.reload(); }
+
+// ============================================================
+// INIT
+// ============================================================
+function initApp() {
+  updateSysStatusUI();
+  renderUsersStats();
+  renderUsersTable();
+  renderRolesTable();
+  renderPwdSelects();
+  renderSystemInfo();
+  renderLog();
+  addLog('sys', `Super Admin เข้าสู่ระบบ`);
+}
+
+// ============================================================
+// PAGE NAV
+// ============================================================
+function showPage(name, navEl) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).style.display = 'block';
+  if (navEl) navEl.classList.add('active');
+  if (name === 'log') renderLog();
+}
+
+// ============================================================
+// USERS
+// ============================================================
+const roleMeta = {
+  employee:   { label:'พนักงาน',     badgeCls:'b-emp'   },
+  manager_l1: { label:'ผจก.ขั้นต้น', badgeCls:'b-mgr1'  },
+  manager_l2: { label:'ผจก.ขั้นสูง', badgeCls:'b-mgr2'  },
+  admin:      { label:'Admin',        badgeCls:'b-admin'  },
+  superadmin: { label:'Super Admin',  badgeCls:'b-sa'     },
+};
+
+function setUserFilter(f, btn) {
+  userFilter = f;
+  document.querySelectorAll('#page-users .filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderUsersTable();
+}
+
+function renderUsersStats() {
+  const total  = users.length;
+  const active = users.filter(u => u.status === 'active').length;
+  const susp   = users.filter(u => u.status === 'suspended').length;
+  const mgrs   = users.filter(u => u.role.startsWith('manager')).length;
+  document.getElementById('userStatStrip').innerHTML = `
+    <div class="stat-tile purple"><div class="num">${total}</div><div class="lbl">ผู้ใช้งานทั้งหมด</div></div>
+    <div class="stat-tile green"><div class="num">${active}</div><div class="lbl">ใช้งานอยู่</div></div>
+    <div class="stat-tile amber"><div class="num">${mgrs}</div><div class="lbl">ผู้บังคับบัญชา</div></div>
+    <div class="stat-tile red"><div class="num">${susp}</div><div class="lbl">ถูกระงับ</div></div>`;
+  // nav badge: suspended users
+  document.getElementById('navBadgeUsers').textContent = susp || '';
+  document.getElementById('navBadgeUsers').style.display = susp ? 'inline-block' : 'none';
+}
+
+function renderUsersTable() {
+  const q = (document.getElementById('userSearch')?.value || '').toLowerCase();
+  const list = users.filter(u => {
+    if (userFilter === 'employee'  && u.role !== 'employee') return false;
+    if (userFilter === 'manager'   && !u.role.startsWith('manager')) return false;
+    if (userFilter === 'admin'     && u.role !== 'admin') return false;
+    if (userFilter === 'suspended' && u.status !== 'suspended') return false;
+    if (q) {
+      const hay = `${u.id} ${u.name} ${u.email} ${u.dept}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const body = document.getElementById('usersBody');
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:#475569;">ไม่พบผู้ใช้งาน</td></tr>`;
+    return;
+  }
+  const rm = roleMeta;
+  body.innerHTML = list.map(u => {
+    const roleInfo = rm[u.role] || { label: u.role, badgeCls: 'b-emp' };
+    const isSelf = u.id === currentSAdmin?.id;
+    return `<tr>
+      <td style="font-weight:700;color:#a855f7;">${u.id}</td>
+      <td><strong style="color:#f1f5f9;">${u.title}${u.name}</strong></td>
+      <td style="font-size:12px;color:#64748b;">${u.email}</td>
+      <td style="font-size:12px;">${u.phone}</td>
+      <td style="font-size:12px;color:#94a3b8;">${u.dept}${u.section ? `<br><span style="color:#64748b;font-size:11px;">↳ ${u.section}</span>` : ''}<br><span style="color:#475569;">${u.position}</span></td>
+      <td><span class="badge ${roleInfo.badgeCls}">${roleInfo.label}</span></td>
+      <td><span class="badge ${u.status==='active'?'b-active':'b-suspended'}">${u.status==='active'?'เปิดใช้งาน':'ถูกระงับ'}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openUserModal('edit','${u.id}')" style="margin-right:4px;">✏️</button>
+        ${!isSelf ? `<button class="btn btn-sm" style="background:#450a0a;color:#fca5a5;" onclick="confirmDelete('${u.id}')">🗑️</button>` : '<span style="font-size:11px;color:#475569;">(คุณ)</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openUserModal(mode, userId) {
+  const isEdit = mode === 'edit';
+  document.getElementById('userModalTitle').textContent = isEdit ? '✏️ แก้ไขผู้ใช้งาน' : '+ เพิ่มผู้ใช้งานใหม่';
+  document.getElementById('userModalSub').textContent   = isEdit ? 'แก้ไขข้อมูลผู้ใช้งาน' : 'กรอกข้อมูลผู้ใช้งาน';
+  document.getElementById('pwdRequiredLabel').textContent = isEdit ? '' : '*';
+  document.getElementById('editUserId').value = userId || '';
+
+  if (isEdit && userId) {
+    const u = users.find(x => x.id === userId);
+    if (!u) return;
+    document.getElementById('fId').value       = u.id;
+    document.getElementById('fId').disabled    = true;
+    document.getElementById('fRole').value     = u.role;
+    document.getElementById('fTitle').value    = u.title;
+    document.getElementById('fName').value     = u.name;
+    document.getElementById('fEmail').value    = u.email;
+    document.getElementById('fPhone').value    = u.phone;
+    document.getElementById('fDept').value     = u.dept;
+    updateSectionDropdown(u.section);
+    document.getElementById('fSection').value  = u.section || '';
+    document.getElementById('fPosition').value = u.position;
+    document.getElementById('fPassword').value = '';
+    document.getElementById('fStatus').value   = u.status;
+  } else {
+    document.getElementById('fId').value       = '';
+    document.getElementById('fId').disabled    = false;
+    document.getElementById('fRole').value     = 'employee';
+    document.getElementById('fTitle').value    = 'นาย';
+    document.getElementById('fName').value     = '';
+    document.getElementById('fEmail').value    = '';
+    document.getElementById('fPhone').value    = '';
+    document.getElementById('fDept').value     = '';
+    updateSectionDropdown('');
+    document.getElementById('fSection').value  = '';
+    document.getElementById('fPosition').value = '';
+    document.getElementById('fPassword').value = '';
+    document.getElementById('fStatus').value   = 'active';
+  }
+  document.getElementById('userModal').classList.add('show');
+}
+
+function saveUser() {
+  const editId = document.getElementById('editUserId').value;
+  const isEdit = !!editId;
+  const id     = isEdit ? editId : document.getElementById('fId').value.trim().toUpperCase();
+  const name   = document.getElementById('fName').value.trim();
+  const email  = document.getElementById('fEmail').value.trim();
+  const pwd    = document.getElementById('fPassword').value;
+
+  if (!id)    { alert('กรุณากรอกรหัสผู้ใช้'); return; }
+  if (!name)  { alert('กรุณากรอกชื่อ-นามสกุล'); return; }
+  if (!email) { alert('กรุณากรอกอีเมล'); return; }
+  if (!isEdit && !pwd) { alert('กรุณากรอกรหัสผ่านเริ่มต้น'); return; }
+  if (!isEdit && users.find(u => u.id === id)) { alert('รหัสผู้ใช้ ' + id + ' มีอยู่แล้ว'); return; }
+
+  const data = {
+    id, title: document.getElementById('fTitle').value,
+    name, email,
+    phone:    document.getElementById('fPhone').value,
+    dept:     document.getElementById('fDept').value,
+    section:  document.getElementById('fSection').value,
+    position: document.getElementById('fPosition').value,
+    role:     document.getElementById('fRole').value,
+    status:   document.getElementById('fStatus').value,
+    password: pwd || (users.find(u => u.id === id)?.password || ''),
+  };
+
+  if (isEdit) {
+    const idx = users.findIndex(u => u.id === id);
+    users[idx] = data;
+    addLog('edit', `แก้ไขข้อมูลผู้ใช้ ${name} (${id})`);
+    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
+      apiPost({ action: 'updateEmployee', empId: id, data: { ...data, empId: id } }).catch(console.warn);
+    }
+  } else {
+    users.push(data);
+    addLog('add', `เพิ่มผู้ใช้ใหม่ ${name} (${id}) — สิทธิ์: ${data.role}`);
+    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
+      apiPost({ action: 'addEmployee', data: { ...data, empId: id } }).catch(console.warn);
+    }
+  }
+
+  closeModal('userModal');
+  renderUsersStats();
+  renderUsersTable();
+  renderRolesTable();
+  renderPwdSelects();
+}
+
+function confirmDelete(userId) {
+  const u = users.find(x => x.id === userId);
+  if (!u) return;
+  document.getElementById('confirmTitle').textContent = 'ลบผู้ใช้งาน?';
+  document.getElementById('confirmMsg').innerHTML =
+    `คุณต้องการลบบัญชี <strong style="color:#fca5a5;">${u.title}${u.name} (${u.id})</strong> ออกจากระบบ?<br><br>การดำเนินการนี้ไม่สามารถย้อนกลับได้`;
+  document.getElementById('confirmOkBtn').onclick = () => {
+    users = users.filter(x => x.id !== userId);
+    addLog('del', `ลบบัญชี ${u.name} (${u.id}) ออกจากระบบ`);
+    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
+      apiPost({ action: 'deleteEmployee', empId: userId }).catch(console.warn);
+    }
+    closeModal('confirmModal');
+    renderUsersStats();
+    renderUsersTable();
+    renderRolesTable();
+    renderPwdSelects();
+  };
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+// ============================================================
+// ROLES
+// ============================================================
+function renderRolesTable() {
+  const q = (document.getElementById('roleSearch')?.value || '').toLowerCase();
+  const list = users.filter(u => {
+    if (q) {
+      const hay = `${u.id} ${u.name} ${u.dept}`.toLowerCase();
+      return hay.includes(q);
+    }
+    return true;
+  });
+  const rm = roleMeta;
+  document.getElementById('rolesBody').innerHTML = list.map(u => {
+    const roleInfo = rm[u.role] || { label:u.role, badgeCls:'b-emp' };
+    const isSelf = u.id === currentSAdmin?.id;
+    return `<tr>
+      <td style="font-weight:700;color:#a855f7;">${u.id}</td>
+      <td style="color:#f1f5f9;font-weight:600;">${u.title}${u.name}</td>
+      <td style="font-size:12px;color:#94a3b8;">${u.dept}</td>
+      <td><span class="badge ${roleInfo.badgeCls}">${roleInfo.label}</span></td>
+      <td>
+        <select class="sa-select" id="roleSelect_${u.id}" style="padding:6px 10px;font-size:12px;" ${isSelf?'disabled':''}>
+          <option value="employee"   ${u.role==='employee'   ?'selected':''}>พนักงาน</option>
+          <option value="manager_l1" ${u.role==='manager_l1' ?'selected':''}>ผจก.ขั้นต้น</option>
+          <option value="manager_l2" ${u.role==='manager_l2' ?'selected':''}>ผจก.ขั้นสูง</option>
+          <option value="admin"      ${u.role==='admin'      ?'selected':''}>Admin</option>
+          <option value="superadmin" ${u.role==='superadmin' ?'selected':''}>Super Admin</option>
+        </select>
+      </td>
+      <td>
+        ${!isSelf
+          ? `<button class="btn btn-primary btn-sm" onclick="applyRole('${u.id}')">บันทึก</button>`
+          : `<span style="font-size:11px;color:#475569;">(บัญชีคุณ)</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function applyRole(userId) {
+  const u       = users.find(x => x.id === userId);
+  const newRole = document.getElementById('roleSelect_' + userId).value;
+  if (!u || u.role === newRole) return;
+  const oldLabel = roleMeta[u.role]?.label || u.role;
+  const newLabel = roleMeta[newRole]?.label || newRole;
+  u.role = newRole;
+  addLog('edit', `เปลี่ยนสิทธิ์ ${u.name} (${u.id}): ${oldLabel} → ${newLabel}`);
+  renderRolesTable();
+  renderUsersTable();
+  alert(`✅ เปลี่ยนสิทธิ์ ${u.name} เป็น "${newLabel}" เรียบร้อย`);
+}
+
+// ============================================================
+// PASSWORD RESET
+// ============================================================
+function renderPwdSelects() {
+  const sel = document.getElementById('pwdUserSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— เลือกผู้ใช้งาน —</option>';
+  users.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = `${u.title}${u.name} (${u.id}) — ${roleMeta[u.role]?.label || u.role}`;
+    sel.appendChild(opt);
+  });
+  sel.value = cur;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pwdMode').addEventListener('change', function() {
+    document.getElementById('pwdManualWrap').style.display = this.value === 'manual' ? 'block' : 'none';
+  });
+});
+
+function loadPwdUser() {
+  const id   = document.getElementById('pwdUserSelect').value;
+  const info = document.getElementById('pwdUserInfo');
+  document.getElementById('pwdResult').classList.remove('show');
+  if (!id) { info.style.display = 'none'; return; }
+  const u = users.find(x => x.id === id);
+  if (!u) return;
+  info.style.display = 'block';
+  info.innerHTML = `<strong style="color:#f1f5f9;">${u.title}${u.name}</strong> &nbsp;|&nbsp; ${u.id} &nbsp;|&nbsp; ${u.email} &nbsp;|&nbsp;
+    <span class="badge ${roleMeta[u.role]?.badgeCls||'b-emp'}">${roleMeta[u.role]?.label||u.role}</span>`;
+}
+
+function doResetPwd() {
+  const id   = document.getElementById('pwdUserSelect').value;
+  const mode = document.getElementById('pwdMode').value;
+  if (!id) { alert('กรุณาเลือกผู้ใช้งาน'); return; }
+
+  let newPwd;
+  if (mode === 'manual') {
+    const p1 = document.getElementById('pwdManualInput').value;
+    const p2 = document.getElementById('pwdManualConfirm').value;
+    if (!p1)       { alert('กรุณากรอกรหัสผ่านใหม่'); return; }
+    if (p1 !== p2) { alert('รหัสผ่านไม่ตรงกัน'); return; }
+    if (p1.length < 6) { alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return; }
+    newPwd = p1;
+  } else {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    newPwd = Array.from({length:8}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  }
+
+  const u = users.find(x => x.id === id);
+  u.password = newPwd;
+
+  const now = new Date('2026-03-13');
+  const thaiM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const dateStr = `${now.getDate()} ${thaiM[now.getMonth()]} ${now.getFullYear()+543}`;
+
+  pwdResetHistory.unshift({ date: dateStr + ' (ตอนนี้)', userId: u.id, userName: u.name, by: currentSAdmin.name, note: mode==='manual'?'กำหนดเอง':'สุ่มอัตโนมัติ' });
+  renderPwdHistory();
+
+  document.getElementById('pwdCode').textContent = mode === 'manual' ? '(กำหนดเอง — ไม่แสดง)' : newPwd;
+  document.getElementById('pwdResult').classList.add('show');
+  addLog('pwd', `Reset password ของ ${u.name} (${u.id})`);
+  if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
+    apiPost({ action: 'resetPassword', empId: id, newPassword: newPwd }).catch(console.warn);
+  }
+
+  // Mock email: notify user of password reset
+  const userEmail = (u.email && u.email !== '-') ? u.email : u.name.toLowerCase().replace(/\s/g,'') + '@planconsultants.co.th';
+  showEmailToast(
+    u.name, userEmail,
+    '[แจ้งเตือนความปลอดภัย] รหัสผ่านของท่านถูก Reset แล้ว',
+    'Super Admin (' + currentSAdmin.name + ') ได้ Reset รหัสผ่านของท่านแล้ว' +
+    (mode === 'auto' ? ' กรุณาติดต่อ Admin เพื่อรับรหัสผ่านใหม่' : ' กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่')
+  );
+}
+
+function renderPwdHistory() {
+  document.getElementById('pwdHistoryBody').innerHTML = pwdResetHistory.map(h => `
+    <tr>
+      <td style="font-size:12px;color:#64748b;">${h.date}</td>
+      <td>${h.userName} <span style="font-size:11px;color:#475569;">(${h.userId})</span></td>
+      <td style="color:#a855f7;">${h.by}</td>
+      <td style="font-size:12px;color:#64748b;">${h.note}</td>
+    </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;padding:20px;color:#475569;">ยังไม่มีประวัติ</td></tr>`;
+}
+
+function copyPwd() {
+  const txt = document.getElementById('pwdCode').textContent;
+  navigator.clipboard?.writeText(txt).then(() => alert('✅ คัดลอกแล้ว: ' + txt)).catch(() => prompt('คัดลอกรหัสผ่าน:', txt));
+}
+
+// ============================================================
+// SYSTEM CONTROL
+// ============================================================
+const sysConfig = {
+  online:      { icon:'🟢', label:'ระบบทำงานปกติ (Online)', sub:'ผู้ใช้งานสามารถเข้าถึงและยื่นใบลาได้ตามปกติ', cls:'online',      dotCls:'',             dot:'🟢', dotTxt:'Online' },
+  maintenance: { icon:'🟡', label:'โหมดบำรุงรักษา (Maintenance)', sub:'ระบบชั่วคราวหยุดการรับใบลาใหม่ — กำลังอัปเดต', cls:'maintenance', dotCls:'maintenance',  dot:'🟡', dotTxt:'Maintenance' },
+  offline:     { icon:'🔴', label:'ระบบปิดทำการ (Offline)', sub:'ผู้ใช้งานไม่สามารถเข้าถึงระบบได้',           cls:'offline',     dotCls:'offline',      dot:'🔴', dotTxt:'Offline' },
+};
+
+function updateSysStatusUI() {
+  const cfg = sysConfig[systemState];
+  const dot = document.getElementById('sysStatusDot');
+  dot.className = 'sys-status-dot ' + cfg.dotCls;
+  document.getElementById('sysStatusTxt').textContent  = cfg.dotTxt;
+  document.getElementById('sysBigIcon').textContent    = cfg.icon;
+  document.getElementById('sysStateLabel').textContent = cfg.label;
+  document.getElementById('sysStateSub').textContent   = cfg.sub;
+  const bs = document.getElementById('sysBigStatus');
+  bs.className = 'sys-big-status ' + cfg.cls;
+}
+
+function setSysState(state) {
+  if (state === systemState) { alert('ระบบอยู่ในสถานะนี้อยู่แล้ว'); return; }
+  pendingSysState = state;
+  const cfg = sysConfig[state];
+  document.getElementById('sysConfirmIcon').textContent  = cfg.icon;
+  document.getElementById('sysConfirmTitle').textContent = 'เปลี่ยนระบบเป็น: ' + cfg.label + '?';
+  document.getElementById('sysConfirmMsg').textContent   = cfg.sub + '\n\nกรุณาระบุเหตุผลก่อนดำเนินการ';
+  document.getElementById('sysConfirmReason').value      = '';
+  document.getElementById('sysConfirmOkBtn').onclick     = confirmSysChange;
+  document.getElementById('sysConfirmModal').classList.add('show');
+}
+
+function confirmSysChange() {
+  const reason = document.getElementById('sysConfirmReason').value.trim();
+  if (!reason) { alert('กรุณาระบุเหตุผล'); return; }
+  const cfg = sysConfig[pendingSysState];
+  addLog('sys', `เปลี่ยนสถานะระบบ → ${cfg.label} | เหตุผล: ${reason}`);
+  systemState = pendingSysState;
+  updateSysStatusUI();
+  closeModal('sysConfirmModal');
+}
+
+function toggleSetting(key, btn) {
+  settings[key] = !settings[key];
+  btn.classList.toggle('on', settings[key]);
+  addLog('sys', `${settings[key]?'เปิด':'ปิด'}การตั้งค่า: ${key}`);
+}
+
+function renderSystemInfo() {
+  document.getElementById('sysOnlineUsers').textContent = users.filter(u => u.status === 'active').length;
+  document.getElementById('sysLeaveCount').textContent  = '8 รายการ';
+  renderPwdHistory();
+}
+
+// ============================================================
+// ACTIVITY LOG
+// ============================================================
+const logDotMap = { add:'add', edit:'edit', del:'del', sys:'sys', pwd:'pwd' };
+
+function addLog(type, msg) {
+  const now = new Date('2026-03-13');
+  const thaiM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const ts = `${now.getDate()} ${thaiM[now.getMonth()]} ${now.getFullYear()+543}`;
+  activityLog.unshift({ time:ts, type, msg, by: currentSAdmin?.name || 'ระบบ' });
+  if (activityLog.length > 100) activityLog.pop();
+}
+
+function renderLog() {
+  document.getElementById('activityLog').innerHTML = activityLog.map(l => `
+    <div class="log-item">
+      <div class="log-dot ${logDotMap[l.type]||'sys'}"></div>
+      <div class="log-time">${l.time}</div>
+      <div class="log-msg">${l.msg}</div>
+      <div class="log-by">โดย: ${l.by}</div>
+    </div>`).join('') || `<div style="padding:28px;text-align:center;color:#475569;">ยังไม่มี log</div>`;
+}
+
+function clearLog() {
+  if (!confirm('ล้าง Activity Log ทั้งหมด?')) return;
+  activityLog = [];
+  renderLog();
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', function(e) { if (e.target === this) closeModal(this.id); });
+});
+
+/* ===== MOCK EMAIL TOAST ===== */
+function showEmailToast(toName, toEmail, subject, body) {
+  let container = document.getElementById('emailToastContainer');
+  if (!container) { container = document.createElement('div'); container.id = 'emailToastContainer'; document.body.appendChild(container); }
+  const toast = document.createElement('div');
+  toast.className = 'email-toast';
+  toast.innerHTML =
+    '<div class="email-toast-hdr">📧 ส่งอีเมลแจ้งเตือนแล้ว <span style="font-weight:400;color:#64748b;font-size:10px;">(จำลอง)</span></div>' +
+    '<div class="email-toast-to">ถึง: ' + toName + ' &lt;' + toEmail + '&gt;</div>' +
+    '<div class="email-toast-sub">📌 ' + subject + '</div>' +
+    (body ? '<div class="email-toast-body">' + body + '</div>' : '');
+  container.appendChild(toast);
+  setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); }, 5500);
+}
+
+  // ── CHANGE PASSWORD ──────────────────────────────────────────
+  function showChangePwd() {
+    ['cpOld','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('cpError').style.display = 'none';
+    document.getElementById('cpSuccess').style.display = 'none';
+    document.getElementById('changePwdModal').style.display = 'flex';
+  }
+  function closeChangePwd() {
+    document.getElementById('changePwdModal').style.display = 'none';
+  }
+  async function doChangePwd() {
+    const oldPwd  = document.getElementById('cpOld').value.trim();
+    const newPwd  = document.getElementById('cpNew').value.trim();
+    const confirm = document.getElementById('cpConfirm').value.trim();
+    const errEl = document.getElementById('cpError');
+    const okEl  = document.getElementById('cpSuccess');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+    if (!oldPwd || !newPwd || !confirm) { errEl.textContent='กรุณากรอกให้ครบทุกช่อง'; errEl.style.display='block'; return; }
+    if (newPwd.length < 6) { errEl.textContent='รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.style.display='block'; return; }
+    if (newPwd !== confirm) { errEl.textContent='รหัสผ่านใหม่ไม่ตรงกัน'; errEl.style.display='block'; return; }
+    const myId = (typeof currentManager!=='undefined' && currentManager?.id)
+               || (typeof currentAdmin!=='undefined' && currentAdmin?.id)
+               || (typeof currentSAdmin!=='undefined' && currentSAdmin?.id) || '';
+    try {
+      const check = await apiGet({ action:'login', id:myId, password:oldPwd });
+      if (!check.ok) { errEl.textContent='รหัสผ่านเดิมไม่ถูกต้อง'; errEl.style.display='block'; return; }
+      const res = await apiPost({ action:'resetPassword', empId:myId, newPassword:newPwd });
+      if (res.ok) { okEl.style.display='block'; setTimeout(closeChangePwd, 1500); }
+      else { errEl.textContent=res.error||'เกิดข้อผิดพลาด'; errEl.style.display='block'; }
+    } catch(e) { errEl.textContent='เชื่อมต่อ API ไม่ได้'; errEl.style.display='block'; }
+  }
+
+</script>
+<div id="emailToastContainer"></div>
+
+  <!-- Change Password Modal -->
+  <div id="changePwdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1e293b;border-radius:16px;padding:32px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+      <h3 style="color:#f1f5f9;margin:0 0 20px;font-size:18px;">🔑 เปลี่ยนรหัสผ่าน</h3>
+      <div style="margin-bottom:14px;">
+        <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">รหัสผ่านเดิม</label>
+        <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+          <input type="password" id="cpOld" placeholder="รหัสผ่านเดิม"
+            style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+          <button type="button" onclick="togglePwd(this)" tabindex="-1"
+            style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">รหัสผ่านใหม่</label>
+        <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+          <input type="password" id="cpNew" placeholder="อย่างน้อย 6 ตัวอักษร"
+            style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+          <button type="button" onclick="togglePwd(this)" tabindex="-1"
+            style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:6px;">ยืนยันรหัสผ่านใหม่</label>
+        <div class="pwd-wrap" style="position:relative;display:flex;align-items:center;">
+          <input type="password" id="cpConfirm" placeholder="กรอกซ้ำ"
+            style="width:100%;padding:10px 42px 10px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;" />
+          <button type="button" onclick="togglePwd(this)" tabindex="-1"
+            style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:0;">👁️</button>
+        </div>
+      </div>
+      <div id="cpError" style="display:none;color:#f87171;font-size:13px;margin-bottom:14px;"></div>
+      <div id="cpSuccess" style="display:none;color:#4ade80;font-size:13px;margin-bottom:14px;">✅ เปลี่ยนรหัสผ่านสำเร็จ!</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="doChangePwd()"
+          style="flex:1;background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">บันทึก</button>
+        <button onclick="closeChangePwd()"
+          style="flex:1;background:#334155;color:#f1f5f9;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
