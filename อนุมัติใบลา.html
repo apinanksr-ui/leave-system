@@ -716,6 +716,17 @@
     try {
       const u = JSON.parse(auth);
       if (!u.role || !u.role.toLowerCase().startsWith('manager')) return;
+
+      // ซ่อน loginScreen ทันที ไม่ต้องรอ API เสร็จก่อน
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('loginScreen').innerHTML =
+          '<div style="text-align:center;padding:60px 20px;">' +
+          '<div style="font-size:36px;margin-bottom:12px;">⏳</div>' +
+          '<div style="font-size:15px;color:#6b7280;">กำลังโหลดข้อมูล...</div></div>';
+        document.getElementById('loginScreen').style.display = 'block';
+      });
+
       const lvl = u.role === 'manager_l1' ? 1 : 2;
       currentManager = {
         id: u.empId, name: u.name || '', position: u.position || '',

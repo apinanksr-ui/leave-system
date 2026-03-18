@@ -842,6 +842,14 @@ let contestTargetId = null;
     try {
       const u = JSON.parse(auth);
       if (!u.role || (u.role.toLowerCase() !== 'admin' && u.role.toLowerCase() !== 'superadmin')) return;
+      // ซ่อน loginScreen ทันที แสดง loading แทน
+      document.addEventListener('DOMContentLoaded', () => {
+        const ls = document.getElementById('loginScreen');
+        if (ls) ls.innerHTML =
+          '<div style="text-align:center;padding:60px 20px;">' +
+          '<div style="font-size:36px;margin-bottom:12px;">⏳</div>' +
+          '<div style="font-size:15px;color:#6b7280;">กำลังโหลดข้อมูล...</div></div>';
+      });
       currentAdmin = { id: u.empId, name: u.name || '', email: u.email || '', role: u.role };
       window.addEventListener('DOMContentLoaded', () => {
         if (typeof apiGet === 'function') {
