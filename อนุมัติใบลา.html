@@ -793,7 +793,11 @@
     renderAll();
   }
 
-  function logout() { currentManager = null; location.reload(); }
+  function logout() {
+    currentManager = null;
+    sessionStorage.removeItem('pcAuth');
+    window.location.href = 'index.html';
+  }
 
   // ===== RENDER =====
   function renderAll() { updateCounts(); renderList(currentFilter); }

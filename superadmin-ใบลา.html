@@ -865,7 +865,11 @@ function _afterSALogin(sa) {
   document.getElementById('tbUser').textContent = '👑 ' + sa.name;
   initApp();
 }
-function doLogout() { currentSAdmin = null; location.reload(); }
+function doLogout() {
+  currentSAdmin = null;
+  sessionStorage.removeItem('pcAuth');
+  window.location.href = 'index.html';
+}
 
 // ============================================================
 // INIT

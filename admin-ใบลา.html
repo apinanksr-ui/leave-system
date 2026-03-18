@@ -904,7 +904,11 @@ function _afterAdminLogin(adm) {
   initApp();
 }
 
-function doLogout() { currentAdmin = null; location.reload(); }
+function doLogout() {
+  currentAdmin = null;
+  sessionStorage.removeItem('pcAuth');
+  window.location.href = 'index.html';
+}
 
 // ============================================================
 // INIT
