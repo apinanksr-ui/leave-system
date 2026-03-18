@@ -1047,15 +1047,11 @@ function saveUser() {
     const idx = users.findIndex(u => u.id === id);
     users[idx] = data;
     addLog('edit', `แก้ไขข้อมูลผู้ใช้ ${name} (${id})`);
-    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-      apiPost({ action: 'updateEmployee', empId: id, data: { ...data, empId: id } }).catch(console.warn);
-    }
+    apiPost({ action: 'updateEmployee', empId: id, data: { ...data, empId: id } }).catch(console.warn);
   } else {
     users.push(data);
     addLog('add', `เพิ่มผู้ใช้ใหม่ ${name} (${id}) — สิทธิ์: ${data.role}`);
-    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-      apiPost({ action: 'addEmployee', data: { ...data, empId: id } }).catch(console.warn);
-    }
+    apiPost({ action: 'addEmployee', data: { ...data, empId: id } }).catch(console.warn);
   }
 
   closeModal('userModal');
@@ -1074,9 +1070,7 @@ function confirmDelete(userId) {
   document.getElementById('confirmOkBtn').onclick = () => {
     users = users.filter(x => x.id !== userId);
     addLog('del', `ลบบัญชี ${u.name} (${u.id}) ออกจากระบบ`);
-    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-      apiPost({ action: 'deleteEmployee', empId: userId }).catch(console.warn);
-    }
+    apiPost({ action: 'deleteEmployee', empId: userId }).catch(console.warn);
     closeModal('confirmModal');
     renderUsersStats();
     renderUsersTable();
@@ -1203,9 +1197,7 @@ function doResetPwd() {
   document.getElementById('pwdCode').textContent = mode === 'manual' ? '(กำหนดเอง — ไม่แสดง)' : newPwd;
   document.getElementById('pwdResult').classList.add('show');
   addLog('pwd', `Reset password ของ ${u.name} (${u.id})`);
-  if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-    apiPost({ action: 'resetPassword', empId: id, newPassword: newPwd }).catch(console.warn);
-  }
+  apiPost({ action: 'resetPassword', empId: id, newPassword: newPwd }).catch(console.warn);
 
   // Mock email: notify user of password reset
   const userEmail = (u.email && u.email !== '-') ? u.email : u.name.toLowerCase().replace(/\s/g,'') + '@planconsultants.co.th';
