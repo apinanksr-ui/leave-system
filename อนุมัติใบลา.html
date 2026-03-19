@@ -742,9 +742,13 @@
               submitIso: x.startDate,
               emp: { id: x.empId, name: x.empName, position: x.position, dept: x.dept },
               leaveType: x.leaveType, startDate: x.startDate, endDate: x.endDate,
-              days: x.days, reason: x.reason,
-              l1AppId: x.l1AppId, l2AppId: x.l2AppId,
-              l1Comment: x.l1Comment||'', l2Comment: x.l2Comment||''
+              days: x.days, daysNum: parseFloat(x.days) || 0, reason: x.reason,
+              l1ApproverId: x.l1AppId, l2ApproverId: x.l2AppId,
+              l1Comment: x.l1Comment||'', l2Comment: x.l2Comment||'',
+              docs: [],
+              l1: { decision: x.l1Decision||null, by: null, date: null, comment: x.l1Comment||'' },
+              l2: { decision: x.l2Decision||null, by: null, date: null, comment: x.l2Comment||'' },
+              attachmentUrl: x.attachmentUrl || ''
             }));
           }).catch(()=>{}).finally(() => _afterLogin(currentManager));
         } else { _afterLogin(currentManager); }
@@ -781,9 +785,13 @@
           submitIso: r.startDate,
           emp: { id: r.empId, name: r.empName, position: r.position, dept: r.dept },
           leaveType: r.leaveType, startDate: r.startDate, endDate: r.endDate,
-          days: r.days, reason: r.reason,
-          l1AppId: r.l1AppId, l2AppId: r.l2AppId,
-          l1Comment: r.l1Comment || '', l2Comment: r.l2Comment || ''
+          days: r.days, daysNum: parseFloat(r.days) || 0, reason: r.reason,
+          l1ApproverId: r.l1AppId, l2ApproverId: r.l2AppId,
+          l1Comment: r.l1Comment || '', l2Comment: r.l2Comment || '',
+          docs: [],
+          l1: { decision: r.l1Decision||null, by: null, date: null, comment: r.l1Comment||'' },
+          l2: { decision: r.l2Decision||null, by: null, date: null, comment: r.l2Comment||'' },
+          attachmentUrl: r.attachmentUrl || ''
         }));
       }
 
@@ -815,7 +823,7 @@
 
   // คืนรายการที่ผู้จัดการคนนี้ต้องดำเนินการ
   function getMyQueue() {
-    const mgrId = currentManager.mgrId;
+    const mgrId = currentManager.id;
     if (currentManager.level === 1) {
       return leaveRequests.filter(r => r.status === 'pending_l1' && r.l1ApproverId === mgrId);
     } else {
@@ -824,7 +832,7 @@
   }
 
   function updateCounts() {
-    const mgrId  = currentManager.mgrId;
+    const mgrId  = currentManager.id;
     // นับเฉพาะรายการที่เกี่ยวข้องกับผู้จัดการคนนี้
     const myAll  = leaveRequests.filter(r =>
       r.l1ApproverId === mgrId || r.l2ApproverId === mgrId);
@@ -881,7 +889,7 @@
   }
 
   function renderList(filter) {
-    const mgrId = currentManager.mgrId;
+    const mgrId = currentManager.id;
     // เฉพาะรายการที่เกี่ยวข้องกับผู้จัดการคนนี้
     const myAll = leaveRequests.filter(r =>
       r.l1ApproverId === mgrId || r.l2ApproverId === mgrId);
@@ -1111,7 +1119,7 @@
 
     // ---------- Action area ----------
     let actionHtml = '';
-    const mgrId  = currentManager.mgrId;
+    const mgrId  = currentManager.id;
     const canAct = (r.status === 'pending_l1' && currentManager.level === 1 && r.l1ApproverId === mgrId) ||
                    (r.status === 'pending_l2' && currentManager.level === 2 && r.l2ApproverId === mgrId);
 

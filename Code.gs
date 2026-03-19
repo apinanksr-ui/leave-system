@@ -43,12 +43,14 @@ var COL_MAP_EMP = {
 
 var COL_MAP_LEAVE = {
   'รหัสใบลา':            'leaveId',
+  'เลขที่ใบลา':          'leaveId',   // ชื่อทางเลือกใน Sheet
   'รหัสพนักงาน':         'empId',
   'ชื่อพนักงาน':         'empName',
   'ฝ่าย':                'dept',
   'ตำแหน่ง':             'position',
   'ประเภทการลา':         'leaveType',
   'วันที่เริ่มต้น':      'startDate',
+  'วันที่เริ่มลา':       'startDate',  // ชื่อทางเลือกใน Sheet
   'วันที่สิ้นสุด':       'endDate',
   'จำนวนวัน':            'days',
   'เหตุผล':              'reason',
@@ -85,10 +87,27 @@ var COL_MAP_APPROVER = {
   'สถานะ':               'status'
 };
 
-/** แปลง header โดยใช้ map ที่ให้มา ถ้าไม่พบให้ใช้ค่าเดิม */
+/** แปลง header โดยใช้ map ที่ให้มา ถ้าไม่พบให้ใช้ค่าเดิม (ตัด * ออกก่อน) */
 function normalizeHeader(raw, map) {
-  var trimmed = String(raw).trim();
+  var trimmed = String(raw).trim().replace(/\*/g, '').trim();
   return map[trimmed] || trimmed;
+}
+
+/**
+ * หา header row ใน sheet และ return ข้อมูลที่ต้องการ
+ * คืนค่า: { rawHdr, normalizedHdr, headerRowIdx, all }
+ */
+function findHeaderRow(sh, colMap) {
+  var all = sh.getDataRange().getValues();
+  var headerRowIdx = 0;
+  for (var r = 0; r < Math.min(5, all.length); r++) {
+    var nonEmpty = all[r].filter(function(c) { return c !== '' && c !== null; }).length;
+    if (nonEmpty >= 3) { headerRowIdx = r; break; }
+  }
+  var rawHdr = all[headerRowIdx];
+  var map = colMap || {};
+  var normalizedHdr = rawHdr.map(function(h) { return normalizeHeader(h, map); });
+  return { rawHdr: rawHdr, normalizedHdr: normalizedHdr, headerRowIdx: headerRowIdx, all: all };
 }
 
 // ============================================================
@@ -195,25 +214,26 @@ function getEmployee(id) {
 }
 
 function addEmployee(obj) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(SHEET_EMP);
-  var hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-  var row = hdr.map(function(col) { return obj[col] !== undefined ? obj[col] : ''; });
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_EMP);
+  var info = findHeaderRow(sh, COL_MAP_EMP);
+  var row  = info.normalizedHdr.map(function(key) {
+    return obj[key] !== undefined ? obj[key] : '';
+  });
   sh.appendRow(row);
   return { ok: true, message: 'เพิ่มพนักงานเรียบร้อย' };
 }
 
 function updateEmployee(empId, obj) {
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName(SHEET_EMP);
-  var all = sh.getDataRange().getValues();
-  var hdr = all[0];
-  var IDX = hdr.indexOf('empId');
-  for (var i = 1; i < all.length; i++) {
-    if (String(all[i][IDX]).trim() === String(empId).trim()) {
-      hdr.forEach(function(col, c) {
-        if (obj[col] !== undefined && col !== 'empId') {
-          sh.getRange(i + 1, c + 1).setValue(obj[col]);
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_EMP);
+  var info = findHeaderRow(sh, COL_MAP_EMP);
+  var IDX  = info.normalizedHdr.indexOf('empId');
+  for (var i = info.headerRowIdx + 1; i < info.all.length; i++) {
+    if (String(info.all[i][IDX]).trim() === String(empId).trim()) {
+      info.normalizedHdr.forEach(function(key, c) {
+        if (obj[key] !== undefined && key !== 'empId') {
+          sh.getRange(i + 1, c + 1).setValue(obj[key]);
         }
       });
       return { ok: true, message: 'อัปเดตข้อมูลเรียบร้อย' };
@@ -223,13 +243,12 @@ function updateEmployee(empId, obj) {
 }
 
 function deleteEmployee(empId) {
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName(SHEET_EMP);
-  var all = sh.getDataRange().getValues();
-  var hdr = all[0];
-  var IDX = hdr.indexOf('empId');
-  for (var i = 1; i < all.length; i++) {
-    if (String(all[i][IDX]).trim() === String(empId).trim()) {
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_EMP);
+  var info = findHeaderRow(sh, COL_MAP_EMP);
+  var IDX  = info.normalizedHdr.indexOf('empId');
+  for (var i = info.headerRowIdx + 1; i < info.all.length; i++) {
+    if (String(info.all[i][IDX]).trim() === String(empId).trim()) {
       sh.deleteRow(i + 1);
       return { ok: true, message: 'ลบพนักงานเรียบร้อย' };
     }
@@ -271,14 +290,14 @@ function getLeaves(params) {
 }
 
 function submitLeave(obj) {
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName(SHEET_LEAVE);
-  var hdr = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_LEAVE);
+  var info = findHeaderRow(sh, COL_MAP_LEAVE);
 
   // สร้าง leaveId อัตโนมัติ
   obj.leaveId    = 'LV' + String(Date.now()).slice(-6);
   obj.submitDate = new Date().toLocaleDateString('th-TH');
-  obj.status     = 'pending';
+  obj.status     = 'pending_l1';
   obj.l1Decision = '';
   obj.l2Decision = '';
   obj.l1Comment  = '';
@@ -287,46 +306,43 @@ function submitLeave(obj) {
   // ── บันทึกไฟล์แนบลง Google Drive (ถ้ามี) ──────────────────
   if (obj.attachmentBase64 && obj.attachmentName) {
     try {
-      var b64Data = obj.attachmentBase64;
-      // ตัด prefix "data:image/jpeg;base64," ออก
+      var b64Data      = obj.attachmentBase64;
       var base64String = b64Data.indexOf(',') !== -1 ? b64Data.split(',')[1] : b64Data;
       var mimeType     = b64Data.indexOf(',') !== -1 ? b64Data.split(';')[0].replace('data:','') : 'application/octet-stream';
       var decoded      = Utilities.base64Decode(base64String);
       var blob         = Utilities.newBlob(decoded, mimeType, obj.attachmentName);
-
-      // หา/สร้างโฟลเดอร์ "LeaveAttachments" ใน Drive
       var folderName   = 'LeaveAttachments_PlanConsultants';
       var folders      = DriveApp.getFoldersByName(folderName);
       var folder       = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-
       var file         = folder.createFile(blob);
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       obj.attachmentUrl = file.getUrl();
     } catch(e) {
       obj.attachmentUrl = 'อัปโหลดไม่สำเร็จ: ' + e.message;
     }
-    // ลบ base64 ออกเพื่อไม่ให้ข้อมูลหนักเกิน
     delete obj.attachmentBase64;
     delete obj.attachmentName;
   }
 
-  var row = hdr.map(function(col) { return obj[col] !== undefined ? obj[col] : ''; });
+  // ใช้ normalizedHdr (English keys) map กับ obj แล้ว appendRow
+  var row = info.normalizedHdr.map(function(key) {
+    return obj[key] !== undefined ? obj[key] : '';
+  });
   sh.appendRow(row);
   return { ok: true, leaveId: obj.leaveId, message: 'ส่งใบลาเรียบร้อย' };
 }
 
 function updateLeave(leaveId, obj) {
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName(SHEET_LEAVE);
-  var all = sh.getDataRange().getValues();
-  var hdr = all[0];
-  var IDX = hdr.indexOf('leaveId');
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_LEAVE);
+  var info = findHeaderRow(sh, COL_MAP_LEAVE);
+  var IDX  = info.normalizedHdr.indexOf('leaveId');
 
-  for (var i = 1; i < all.length; i++) {
-    if (String(all[i][IDX]).trim() === String(leaveId).trim()) {
-      hdr.forEach(function(col, c) {
-        if (obj[col] !== undefined) {
-          sh.getRange(i + 1, c + 1).setValue(obj[col]);
+  for (var i = info.headerRowIdx + 1; i < info.all.length; i++) {
+    if (String(info.all[i][IDX]).trim() === String(leaveId).trim()) {
+      info.normalizedHdr.forEach(function(key, c) {
+        if (obj[key] !== undefined) {
+          sh.getRange(i + 1, c + 1).setValue(obj[key]);
         }
       });
       return { ok: true, message: 'อัปเดตใบลาเรียบร้อย' };
@@ -346,15 +362,14 @@ function getQuotas(empId) {
 }
 
 function updateQuota(empId, obj) {
-  var ss  = SpreadsheetApp.getActiveSpreadsheet();
-  var sh  = ss.getSheetByName(SHEET_QUOTA);
-  var all = sh.getDataRange().getValues();
-  var hdr = all[0];
-  var IDX = hdr.indexOf('empId');
-  for (var i = 1; i < all.length; i++) {
-    if (String(all[i][IDX]).trim() === String(empId).trim()) {
-      hdr.forEach(function(col, c) {
-        if (obj[col] !== undefined) sh.getRange(i + 1, c + 1).setValue(obj[col]);
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var sh   = ss.getSheetByName(SHEET_QUOTA);
+  var info = findHeaderRow(sh, COL_MAP_QUOTA);
+  var IDX  = info.normalizedHdr.indexOf('empId');
+  for (var i = info.headerRowIdx + 1; i < info.all.length; i++) {
+    if (String(info.all[i][IDX]).trim() === String(empId).trim()) {
+      info.normalizedHdr.forEach(function(key, c) {
+        if (obj[key] !== undefined) sh.getRange(i + 1, c + 1).setValue(obj[key]);
       });
       return { ok: true, message: 'อัปเดตโควต้าเรียบร้อย' };
     }
