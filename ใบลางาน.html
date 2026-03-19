@@ -844,9 +844,13 @@
         l1ApproverId: u.l1Id || null, l2ApproverId: u.l2Id || null,
         leave: { sick:{quota:30,used:0}, business:{quota:10,used:0}, vacation:{quota:10,used:0} }
       };
-      // โหลดโควต้าจาก API
-      if (typeof apiGet === 'function') {
-        apiGet({ action:'getQuotas', empId: u.empId }).then(q => {
+      // โหลดโควต้า + ข้อมูลผู้อนุมัติจาก API แล้วค่อย loadForm
+      const doAutoLoad = () => {
+        if (typeof apiGet !== 'function') { loadForm(); return; }
+        Promise.all([
+          apiGet({ action:'getQuotas', empId: u.empId }),
+          apiGet({ action:'getApprovers' })
+        ]).then(([q, a]) => {
           if (q.ok && q.data.length > 0) {
             const d = q.data[0];
             currentEmployee.leave = {
@@ -855,9 +859,17 @@
               vacation: { quota: Number(d.vacationQuota)||10, used: Number(d.vacationUsed)||0 }
             };
           }
-        }).catch(()=>{});
+          if (a.ok) {
+            a.data.forEach(ap => { approverDB[ap.id] = { name: ap.name, position: ap.position }; });
+          }
+        }).catch(()=>{}).finally(() => loadForm());
+      };
+      // รอ DOM พร้อมก่อนแล้วค่อยโหลด
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', doAutoLoad);
+      } else {
+        doAutoLoad();
       }
-      window.addEventListener('DOMContentLoaded', () => loadForm());
     } catch(e) {}
   })();
 
