@@ -835,7 +835,7 @@
     if (!auth) return;
     try {
       const u = JSON.parse(auth);
-      if (!u.empId || (u.role && u.role.toLowerCase() !== 'employee')) return;
+      if (!u.empId || (u.role && u.role.toLowerCase() === 'superadmin')) return;
       currentEmployee = {
         empId: u.empId, title: u.title || '', name: u.name || '',
         phone: u.phone || '', position: u.position || '',
@@ -913,7 +913,7 @@
 
     const e = currentEmployee;
     document.getElementById('dispName').textContent = `${e.title} ${e.name}`;
-    document.getElementById('dispMeta').textContent = `${e.position} | ${e.department} | ${e.unit}`;
+    document.getElementById('dispMeta').textContent = `${e.position} | ${e.department}${e.section ? ' | ' + e.section : ''}`;
     document.getElementById('dispEmpId').textContent = e.empId;
     document.getElementById('contactPhone').value = e.phone;
     const today = new Date();
@@ -1125,7 +1125,7 @@
           <tr><td>รหัสพนักงาน</td><td>${e.empId}</td></tr>
           <tr><td>ตำแหน่ง</td><td>${e.position}</td></tr>
           <tr><td>แผนก/ฝ่าย</td><td>${e.department}</td></tr>
-          <tr><td>หน่วยงาน</td><td>${e.unit}</td></tr>
+          <tr><td>หน่วยงาน</td><td>${e.section || '-'}</td></tr>
           <tr><td>เส้นทางอนุมัติ</td><td>${approverChainHtml}</td></tr>
         </table>
       </div>
@@ -1285,13 +1285,29 @@
   }
 
   function closeDone() {
-    // ล้าง session แล้วปิดหน้าต่าง หรือกลับไป index
-    sessionStorage.removeItem('pcAuth');
-    try { window.close(); } catch(e) {}
-    // ถ้า window.close() ไม่ได้ (เปิดเองไม่ใช่ popup) ให้กลับ index
-    setTimeout(function() {
+    // ตรวจ role เพื่อ redirect กลับหน้าที่เหมาะสม
+    const ROLE_PAGES = {
+      'employee':    'index.html',
+      'manager_l1':  'อนุมัติใบลา.html',
+      'manager_l2':  'อนุมัติใบลา.html',
+      'admin':       'admin-ใบลา.html',
+    };
+    try {
+      const auth = sessionStorage.getItem('pcAuth');
+      const u    = auth ? JSON.parse(auth) : null;
+      const role = u ? (u.role || 'employee').toLowerCase() : 'employee';
+      const dest = ROLE_PAGES[role] || 'index.html';
+
+      // ถ้าเป็น employee ล้าง session ด้วย (จบการทำงาน)
+      // manager/admin คงไว้เพราะยังต้องใช้หน้าอนุมัติ/admin
+      if (role === 'employee') sessionStorage.removeItem('pcAuth');
+
+      try { window.close(); } catch(e2) {}
+      setTimeout(function() { window.location.href = dest; }, 300);
+    } catch(e) {
+      sessionStorage.removeItem('pcAuth');
       window.location.href = 'index.html';
-    }, 300);
+    }
   }
 
   async function submitForm() {
