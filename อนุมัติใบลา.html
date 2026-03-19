@@ -698,6 +698,7 @@
 
   let currentManager = null;
   let currentFilter  = "all";
+  let empDB          = {};  // { empId: { title, name, position, dept, section } }
 
   // ===== LOGIN =====
 
@@ -736,20 +737,12 @@
       };
       window.addEventListener('DOMContentLoaded', () => {
         if (typeof apiGet === 'function') {
-          apiGet({ action:'getLeaves' }).then(r => {
-            if (r.ok) leaveRequests = r.data.map(x => ({
-              id: x.leaveId, status: x.status, submitDate: x.submitDate,
-              submitIso: x.startDate,
-              emp: { id: x.empId, name: x.empName, position: x.position, dept: x.dept },
-              leaveType: x.leaveType, startDate: x.startDate, endDate: x.endDate,
-              days: x.days, daysNum: parseFloat(x.days) || 0, reason: x.reason,
-              l1ApproverId: x.l1AppId, l2ApproverId: x.l2AppId,
-              l1Comment: x.l1Comment||'', l2Comment: x.l2Comment||'',
-              docs: [],
-              l1: { decision: x.l1Decision||null, by: null, date: null, comment: x.l1Comment||'' },
-              l2: { decision: x.l2Decision||null, by: null, date: null, comment: x.l2Comment||'' },
-              attachmentUrl: x.attachmentUrl || ''
-            }));
+          Promise.all([
+            apiGet({ action:'getLeaves' }),
+            apiGet({ action:'getEmployees' })
+          ]).then(([lRes, eRes]) => {
+            if (eRes.ok) eRes.data.forEach(e => { empDB[e.empId] = e; });
+            if (lRes.ok) leaveRequests = lRes.data.map(x => buildLeaveObj(x));
           }).catch(()=>{}).finally(() => _afterLogin(currentManager));
         } else { _afterLogin(currentManager); }
       });
@@ -777,23 +770,13 @@
         levelName: lvl === 1 ? 'ผู้บังคับบัญชาขั้นต้น (L1)' : 'ผู้บังคับบัญชาขั้นสูง (L2)'
       };
 
-      // โหลดใบลาที่เกี่ยวข้องกับผู้อนุมัติคนนี้
-      const lRes = await apiGet({ action: 'getLeaves' });
-      if (lRes.ok) {
-        leaveRequests = lRes.data.map(r => ({
-          id: r.leaveId, status: r.status, submitDate: r.submitDate,
-          submitIso: r.startDate,
-          emp: { id: r.empId, name: r.empName, position: r.position, dept: r.dept },
-          leaveType: r.leaveType, startDate: r.startDate, endDate: r.endDate,
-          days: r.days, daysNum: parseFloat(r.days) || 0, reason: r.reason,
-          l1ApproverId: r.l1AppId, l2ApproverId: r.l2AppId,
-          l1Comment: r.l1Comment || '', l2Comment: r.l2Comment || '',
-          docs: [],
-          l1: { decision: r.l1Decision||null, by: null, date: null, comment: r.l1Comment||'' },
-          l2: { decision: r.l2Decision||null, by: null, date: null, comment: r.l2Comment||'' },
-          attachmentUrl: r.attachmentUrl || ''
-        }));
-      }
+      // โหลดใบลา + ข้อมูลพนักงาน
+      const [lRes, eRes] = await Promise.all([
+        apiGet({ action: 'getLeaves' }),
+        apiGet({ action: 'getEmployees' })
+      ]);
+      if (eRes.ok) eRes.data.forEach(e => { empDB[e.empId] = e; });
+      if (lRes.ok) leaveRequests = lRes.data.map(r => buildLeaveObj(r));
 
       document.getElementById('loginError').classList.remove('show');
       _afterLogin(currentManager);
@@ -816,6 +799,43 @@
     currentManager = null;
     sessionStorage.removeItem('pcAuth');
     window.location.href = 'index.html';
+  }
+
+  // ===== BUILD LEAVE OBJECT จาก API row =====
+  function buildLeaveObj(x) {
+    const emp = empDB[x.empId] || {};
+    // normalize status: 'pending' เก่า → ให้ถือว่า pending_l1
+    const status = (x.status === 'pending') ? 'pending_l1' : (x.status || 'pending_l1');
+    // parse วันที่ end — บางครั้ง endDate = '' หรือ undefined ให้ใช้ startDate แทน
+    const endDate = x.endDate && String(x.endDate).trim() !== '' ? x.endDate : x.startDate;
+    return {
+      id:           x.leaveId || x.id || '',
+      status:       status,
+      submitDate:   x.submitDate || '',
+      submitIso:    x.startDate  || '',
+      emp: {
+        id:       x.empId    || '',
+        name:     x.empName  || emp.name || '',
+        title:    emp.title  || '',
+        position: emp.position || x.position || '',
+        dept:     emp.dept   || x.dept   || '',
+        section:  emp.section || ''
+      },
+      leaveType:    x.leaveType  || '',
+      startDate:    x.startDate  || '',
+      endDate:      endDate,
+      days:         x.days       || '1',
+      daysNum:      parseFloat(x.days) || 1,
+      reason:       x.reason     || '',
+      l1ApproverId: x.l1AppId    || '',
+      l2ApproverId: x.l2AppId    || '',
+      l1Comment:    x.l1Comment  || '',
+      l2Comment:    x.l2Comment  || '',
+      docs:         [],
+      l1: { decision: x.l1Decision || null, by: x.l1AppId || null, date: x.l1ActionDate || null, comment: x.l1Comment || '' },
+      l2: { decision: x.l2Decision || null, by: x.l2AppId || null, date: x.l2ActionDate || null, comment: x.l2Comment || '' },
+      attachmentUrl: x.attachmentUrl || ''
+    };
   }
 
   // ===== RENDER =====
@@ -1021,12 +1041,14 @@
       </div>`;
   }
   const statusLabel = {
+    pending:    '⏳ รอขั้นต้นอนุมัติ',
     pending_l1: '⏳ รอขั้นต้นอนุมัติ',
     pending_l2: '🔹 รอขั้นสูงอนุมัติ',
     approved:   '✅ อนุมัติสมบูรณ์',
     rejected:   '❌ ไม่อนุมัติ',
   };
   const badgeClass = {
+    pending:    'badge-pending-l1',
     pending_l1: 'badge-pending-l1',
     pending_l2: 'badge-pending-l2',
     approved:   'badge-approved',
@@ -1186,28 +1208,28 @@
         <div class="card-left">
           <div class="emp-avatar-sm">👤</div>
           <div>
-            <div class="card-emp-name">${r.emp.title} ${r.emp.name}</div>
-            <div class="card-emp-meta">${r.emp.position} · ${r.emp.department} · รหัส ${r.emp.id}</div>
+            <div class="card-emp-name">${[r.emp.title, r.emp.name].filter(Boolean).join(' ') || r.emp.id}</div>
+            <div class="card-emp-meta">${r.emp.position || '-'} · ${r.emp.dept || r.emp.department || '-'} · รหัส ${r.emp.id}</div>
             <div class="card-info">
-              <div class="info-chip">${icon} ${r.leaveType}</div>
-              <div class="info-chip">📅 ${r.startDate}${r.startDate !== r.endDate ? ` — ${r.endDate}` : ''}</div>
-              <div class="info-chip">⏱ ${r.duration}</div>
-              <div class="info-chip">🗓 ยื่น ${r.submitDate}</div>
-              ${r.docs.length ? `<div class="info-chip">📎 ${r.docs.join(', ')}</div>` : ''}
+              <div class="info-chip">${icon} ${r.leaveType || '-'}</div>
+              <div class="info-chip">📅 ${r.startDate || '-'}${(r.endDate && r.startDate !== r.endDate) ? ` — ${r.endDate}` : ''}</div>
+              <div class="info-chip">⏱ ${r.daysNum || r.days || 1} วัน</div>
+              <div class="info-chip">🗓 ยื่น ${r.submitDate || '-'}</div>
+              ${(r.docs && r.docs.length) ? `<div class="info-chip">📎 ${r.docs.join(', ')}</div>` : ''}
             </div>
           </div>
         </div>
-        <span class="status-badge ${badgeClass[r.status]}">${statusLabel[r.status]}</span>
+        <span class="status-badge ${badgeClass[r.status] || 'badge-pending-l1'}">${statusLabel[r.status] || '⏳ รอดำเนินการ'}</span>
       </div>
       <div class="card-toggle" onclick="toggleDetail('${r.id}')">
         <span id="arrow-${r.id}">▶</span> ดูรายละเอียด / ดำเนินการ
       </div>
       <div class="card-detail" id="detail-${r.id}">
         <div class="detail-row"><span class="detail-label">เลขที่ใบลา</span><span class="detail-value">${r.id}</span></div>
-        <div class="detail-row"><span class="detail-label">เรียน</span><span class="detail-value">${r.to}</span></div>
-        <div class="detail-row"><span class="detail-label">ประเภทการลา</span><span class="detail-value">${icon} ${r.leaveType}</span></div>
-        <div class="detail-row"><span class="detail-label">วันที่ลา</span><span class="detail-value">${r.startDate}${r.startDate !== r.endDate ? ` — ${r.endDate}` : ''} (${r.duration})</span></div>
-        <div class="detail-row"><span class="detail-label">เอกสารแนบ</span><span class="detail-value">${docs}</span></div>
+        <div class="detail-row"><span class="detail-label">พนักงาน</span><span class="detail-value">${[r.emp.title, r.emp.name].filter(Boolean).join(' ')} (${r.emp.id})</span></div>
+        <div class="detail-row"><span class="detail-label">ประเภทการลา</span><span class="detail-value">${icon} ${r.leaveType || '-'}</span></div>
+        <div class="detail-row"><span class="detail-label">วันที่ลา</span><span class="detail-value">${r.startDate || '-'}${(r.endDate && r.startDate !== r.endDate) ? ` — ${r.endDate}` : ''} (${r.daysNum || r.days || 1} วัน)</span></div>
+        <div class="detail-row"><span class="detail-label">เอกสารแนบ</span><span class="detail-value">${r.attachmentUrl ? `<a href="${r.attachmentUrl}" target="_blank">ดูไฟล์แนบ</a>` : 'ไม่มี'}</span></div>
         ${r.reason ? `<div class="detail-row" style="flex-direction:column;gap:6px;"><span class="detail-label">สาเหตุการลา</span><div class="reason-box">${r.reason}</div></div>` : ''}
         ${quotaHtml}
         ${approvalChain}
