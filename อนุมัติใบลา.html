@@ -1417,8 +1417,8 @@
 
   function sendDecisionEmails(req, decision) {
     // Find employee info from leaveRequests data
-    var empName = req.emp || 'พนักงาน';
-    var empEmail = (empName.toLowerCase().replace(/ /g,'')) + '@planconsultants.co.th';
+    var empName = (req.emp && req.emp.name) ? req.emp.name : (req.empName || 'พนักงาน');
+    var empEmail = empName.toLowerCase().replace(/ /g,'') + '@planconsultants.co.th';
     var resultLabel = decision === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ';
     var icon = decision === 'approved' ? '✅' : '❌';
 
