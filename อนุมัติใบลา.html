@@ -1373,8 +1373,18 @@
       updateData.l2ActionDate = todayStr;
     }
     apiPost({ action: 'updateLeave', leaveId: req.id, data: updateData })
-      .then(r => { if (!r.ok) showToast('⚠️ บันทึกไม่สำเร็จ: ' + (r.error||''), 'error'); })
-      .catch(e => showToast('⚠️ เชื่อมต่อ API ไม่ได้', 'error'));
+      .then(r => {
+        if (r.ok) {
+          showToast('✅ บันทึกลง Sheet สำเร็จ', 'success');
+        } else {
+          showToast('⚠️ บันทึกไม่สำเร็จ: ' + (r.error || JSON.stringify(r)), 'error');
+          console.error('updateLeave failed:', r);
+        }
+      })
+      .catch(e => {
+        showToast('⚠️ เชื่อมต่อ API ไม่ได้: ' + e.message, 'error');
+        console.error('updateLeave error:', e);
+      });
   }
 
   // ===== TOAST =====

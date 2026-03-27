@@ -1164,10 +1164,10 @@ function renderAllRequests() {
       <td>${r.submitDate}</td>
       <td>
         <div style="font-weight:700;">${r.emp.title}${r.emp.name}</div>
-        <div style="font-size:11px;color:#9aa5b4;">${r.emp.id} · ${r.emp.department}</div>
+        <div style="font-size:11px;color:#9aa5b4;">${r.emp.id} · ${r.emp.department || r.emp.dept || ''}</div>
       </td>
       <td>${r.leaveType}</td>
-      <td>${r.duration}<br><span style="font-size:11px;color:#9aa5b4;">${r.startDate}</span></td>
+      <td>${r.duration || ((r.days||r.daysNum||1) + ' วัน')}<br><span style="font-size:11px;color:#9aa5b4;">${r.startDate}</span></td>
       <td>${quotaHtml}</td>
       <td>
         <div style="font-size:12px;">${l1Dec} ${l1Name !== '-' ? l1Name : '<span style="color:#d1d9e0;">-</span>'}</div>
