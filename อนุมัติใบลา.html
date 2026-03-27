@@ -841,18 +841,31 @@
   // ===== RENDER =====
   function renderAll() { updateCounts(); renderList(currentFilter); }
 
+  // กรองใบลาที่ manager คนนี้รับผิดชอบ
+  // — ถ้าใบลามี approver ID → กรองตาม ID
+  // — ถ้าใบลาไม่มี approver ID (ข้อมูลเก่า) → แสดงให้ทุก manager เห็น
+  function getMyLeaves() {
+    const mgrId = currentManager.id;
+    return leaveRequests.filter(r => {
+      const hasL1 = r.l1ApproverId && r.l1ApproverId !== '';
+      const hasL2 = r.l2ApproverId && r.l2ApproverId !== '';
+      if (!hasL1 && !hasL2) return true; // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
+      return r.l1ApproverId === mgrId || r.l2ApproverId === mgrId;
+    });
+  }
+
   // คืนรายการที่ผู้จัดการคนนี้ต้องดำเนินการ
   function getMyQueue() {
+    const myLeaves = getMyLeaves();
     if (currentManager.level === 1) {
-      return leaveRequests.filter(r => r.status === 'pending_l1');
+      return myLeaves.filter(r => r.status === 'pending_l1');
     } else {
-      return leaveRequests.filter(r => r.status === 'pending_l2');
+      return myLeaves.filter(r => r.status === 'pending_l2');
     }
   }
 
   function updateCounts() {
-    // แสดงทุกรายการในระบบ (manager ดูแลทุกคน)
-    const myAll  = leaveRequests;
+    const myAll  = getMyLeaves();
     const pendL1 = myAll.filter(r => r.status === 'pending_l1').length;
     const pendL2 = myAll.filter(r => r.status === 'pending_l2').length;
     const approved = myAll.filter(r => r.status === 'approved').length;
@@ -906,8 +919,7 @@
   }
 
   function renderList(filter) {
-    // แสดงทุกรายการ (manager ดูแลทุกคน)
-    const myAll = leaveRequests;
+    const myAll = getMyLeaves();
     let list;
     if (filter === 'all')           list = myAll;
     else if (filter === 'my_queue') list = getMyQueue();
@@ -917,7 +929,16 @@
     if (list.length === 0) {
       el.innerHTML = `<div class="list-empty">📭 ไม่มีรายการในหมวดนี้</div>`; return;
     }
-    el.innerHTML = list.map(r => buildCard(r)).join('');
+    const cards = list.map(r => {
+      try { return buildCard(r); }
+      catch(err) {
+        console.error('buildCard error:', err, r);
+        return `<div class="leave-card" style="padding:16px 20px;color:#c53030;">
+          ⚠️ ไม่สามารถแสดงรายการ ${r.id || ''} ได้ (${err.message})
+        </div>`;
+      }
+    });
+    el.innerHTML = cards.join('');
   }
 
   const leaveIcon   = { 'ลาป่วย': '🤒', 'ลากิจ': '📎', 'ลาพักผ่อน': '🏖️' };

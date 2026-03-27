@@ -844,8 +844,19 @@
         l1ApproverId: u.l1Id || null, l2ApproverId: u.l2Id || null,
         leave: { sick:{quota:30,used:0}, business:{quota:10,used:0}, vacation:{quota:10,used:0} }
       };
-      // โหลดโควต้า + ข้อมูลผู้อนุมัติจาก API แล้วค่อย loadForm
+      // แสดง loading ทันที แล้วค่อยโหลดข้อมูล
+      const showAutoLoading = () => {
+        const ls = document.getElementById('loginScreen');
+        if (ls) {
+          ls.style.display = 'block';
+          ls.innerHTML = '<div style="text-align:center;padding:80px 20px;">' +
+            '<div style="font-size:40px;margin-bottom:14px;">⏳</div>' +
+            '<div style="font-size:16px;color:#3d3532;font-weight:600;">กำลังโหลดข้อมูล...</div>' +
+            '<div style="font-size:13px;color:#9aa5b4;margin-top:6px;">กรุณารอสักครู่</div></div>';
+        }
+      };
       const doAutoLoad = () => {
+        showAutoLoading();
         if (typeof apiGet !== 'function') { loadForm(); return; }
         Promise.all([
           apiGet({ action:'getQuotas', empId: u.empId }),
