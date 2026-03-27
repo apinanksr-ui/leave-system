@@ -842,15 +842,29 @@
   function renderAll() { updateCounts(); renderList(currentFilter); }
 
   // กรองใบลาที่ manager คนนี้รับผิดชอบ
-  // — ถ้าใบลามี approver ID → กรองตาม ID
-  // — ถ้าใบลาไม่มี approver ID (ข้อมูลเก่า) → แสดงให้ทุก manager เห็น
+  // — L1: เห็นเฉพาะใบที่ตัวเองเป็น l1ApproverId (หรือข้อมูลเก่าไม่มี approver)
+  // — L2: เห็นทุกใบที่ status=pending_l2 + ใบที่ตัวเองเคยดำเนินการ (l2ApproverId ตรง)
   function getMyLeaves() {
     const mgrId = currentManager.id;
+    const level = currentManager.level;
     return leaveRequests.filter(r => {
       const hasL1 = r.l1ApproverId && r.l1ApproverId !== '';
       const hasL2 = r.l2ApproverId && r.l2ApproverId !== '';
-      if (!hasL1 && !hasL2) return true; // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
-      return r.l1ApproverId === mgrId || r.l2ApproverId === mgrId;
+      const hasAny = hasL1 || hasL2;
+
+      if (level === 2) {
+        // L2 อนุมัติขั้นสูง: เห็นใบที่รอ L2 อนุมัติ
+        if (r.status === 'pending_l2') return true;
+        // L2: เห็นใบที่ตัวเองเคยดำเนินการแล้ว (l2ApproverId ตรง)
+        if (hasL2 && r.l2ApproverId === mgrId) return true;
+        // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
+        if (!hasAny) return true;
+        return false;
+      }
+
+      // L1: แสดงเฉพาะใบที่ตัวเองเป็น l1ApproverId
+      if (!hasAny) return true; // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
+      return r.l1ApproverId === mgrId;
     });
   }
 
@@ -1217,9 +1231,9 @@
             <button class="btn btn-reject"  onclick="decide('${r.id}','rejected')">❌ ไม่อนุมัติ</button>
           </div>`;
       }
-    } else if (r.status === 'pending_l2' && currentManager.level === 1 && r.l1ApproverId === mgrId) {
+    } else if (r.status === 'pending_l2' && currentManager.level === 1 && r.l1ApproverId === currentManager.id) {
       actionHtml = `<div class="waiting-note wn-l2">🔹 คุณอนุมัติ (ขั้นต้น) แล้ว — รอผู้บังคับบัญชาขั้นสูงดำเนินการต่อ</div>`;
-    } else if (r.status === 'pending_l1' && currentManager.level === 2 && r.l2ApproverId === mgrId) {
+    } else if (r.status === 'pending_l1' && currentManager.level === 2 && r.l2ApproverId === currentManager.id) {
       actionHtml = `<div class="waiting-note wn-l1">⏳ รอผู้บังคับบัญชาขั้นต้นอนุมัติก่อน — คุณยังไม่สามารถดำเนินการได้</div>`;
     }
 
