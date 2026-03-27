@@ -1250,7 +1250,7 @@
         <div class="detail-row"><span class="detail-label">พนักงาน</span><span class="detail-value">${[r.emp.title, r.emp.name].filter(Boolean).join(' ')} (${r.emp.id})</span></div>
         <div class="detail-row"><span class="detail-label">ประเภทการลา</span><span class="detail-value">${icon} ${r.leaveType || '-'}</span></div>
         <div class="detail-row"><span class="detail-label">วันที่ลา</span><span class="detail-value">${r.startDate || '-'}${(r.endDate && r.startDate !== r.endDate) ? ` — ${r.endDate}` : ''} (${r.daysNum || r.days || 1} วัน)</span></div>
-        <div class="detail-row"><span class="detail-label">เอกสารแนบ</span><span class="detail-value">${r.attachmentUrl ? `<a href="${r.attachmentUrl}" target="_blank">ดูไฟล์แนบ</a>` : 'ไม่มี'}</span></div>
+        <div class="detail-row"><span class="detail-label">เอกสารแนบ</span><span class="detail-value">${(r.attachmentUrl && r.attachmentUrl.startsWith('http')) ? `<a href="${r.attachmentUrl}" target="_blank">📎 ดูไฟล์แนบ</a>` : 'ไม่มี'}</span></div>
         ${r.reason ? `<div class="detail-row" style="flex-direction:column;gap:6px;"><span class="detail-label">สาเหตุการลา</span><div class="reason-box">${r.reason}</div></div>` : ''}
         ${quotaHtml}
         ${approvalChain}
@@ -1281,6 +1281,10 @@
   function decide(id, decision) {
     const req = leaveRequests.find(r => r.id === id);
     if (!req) return;
+    // Disable ปุ่มทันทีเพื่อป้องกันกดซ้ำ
+    document.querySelectorAll(`#card-${id} .btn`).forEach(b => {
+      b.disabled = true; b.style.opacity = '0.6'; b.textContent = '⏳ กำลังดำเนินการ...';
+    });
 
     // Get comment depending on level
     let comment = '';
@@ -1319,7 +1323,19 @@
       req.status = decision === 'approved' ? 'approved' : 'rejected';
     }
 
-    // Toast message
+    // ── อัพเดต card ทันที (feedback ก่อน API กลับมา) ──
+    try {
+      const cardEl = document.getElementById('card-' + id);
+      if (cardEl) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = buildCard(req);
+        cardEl.replaceWith(tempDiv.firstElementChild);
+        setTimeout(() => toggleDetail(id), 100);
+      }
+    } catch(e) { console.warn('card re-render error:', e); }
+    updateCounts();
+
+    // ── Toast ──
     let msg;
     if (decision === 'approved') {
       msg = currentManager.level === 1
@@ -1331,21 +1347,20 @@
     showToast(msg, decision === 'approved' ? 'success' : 'error');
     sendDecisionEmails(req, decision);
 
-    // Re-render the card in place
-    const cardEl = document.getElementById('card-' + id);
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = buildCard(req);
-    cardEl.replaceWith(tempDiv.firstElementChild);
-    updateCounts();
-    setTimeout(() => toggleDetail(id), 100);
-
-    // อัพเดตสถานะใน API
-    if (API_URL !== 'https://script.google.com/macros/s/AKfycbwxPSRG95kKtMcknaCuLnrcCt1pJCXQyigvFRFz2ylUL5z_Pm7fuW0R751oRN8Hj2-J/exec') {
-      const updateData = { status: req.status };
-      if (currentManager.level === 1) { updateData.l1Decision = decision; updateData.l1Comment = comment; }
-      else { updateData.l2Decision = decision; updateData.l2Comment = comment; }
-      apiPost({ action: 'updateLeave', leaveId: req.id, data: updateData }).catch(console.warn);
+    // ── บันทึกลง Google Sheet ──
+    const updateData = { status: req.status };
+    if (currentManager.level === 1) {
+      updateData.l1Decision   = decision;
+      updateData.l1Comment    = comment;
+      updateData.l1ActionDate = todayStr;
+    } else {
+      updateData.l2Decision   = decision;
+      updateData.l2Comment    = comment;
+      updateData.l2ActionDate = todayStr;
     }
+    apiPost({ action: 'updateLeave', leaveId: req.id, data: updateData })
+      .then(r => { if (!r.ok) showToast('⚠️ บันทึกไม่สำเร็จ: ' + (r.error||''), 'error'); })
+      .catch(e => showToast('⚠️ เชื่อมต่อ API ไม่ได้', 'error'));
   }
 
   // ===== TOAST =====
