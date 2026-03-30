@@ -569,31 +569,13 @@
   // ============================================================
   // MOCK DATABASE — ผู้อนุมัติ 2 ระดับ
   // ============================================================
-  const managers = {
-    "MGR001": {
-      phone: "0811111111", name: "ธนากร สุขสม",
-      position: "ผู้จัดการฝ่ายวิศวกรรม",
-      level: 1, levelName: "ผู้บังคับบัญชาขั้นต้น",
-      mgrId: "MGR001"
-    },
-    "MGR002": {
-      phone: "0833333333", name: "ธัญญา สร้างดี",
-      position: "ผู้จัดการฝ่ายออกแบบ",
-      level: 1, levelName: "ผู้บังคับบัญชาขั้นต้น",
-      mgrId: "MGR002"
-    },
-    "MGR003": {
-      phone: "0822222222", name: "จิตรา มั่นคง",
-      position: "กรรมการผู้จัดการ",
-      level: 2, levelName: "ผู้บังคับบัญชาขั้นสูง",
-      mgrId: "MGR003"
-    },
-  };
+  const managers  = {};   // โหลดจาก getApprovers API
+  const empQuota  = {};   // โหลดจาก getQuotas + คำนวณจาก approved leaves
 
   // ============================================================
-  // สิทธิ์การลาพนักงาน (ก่อนคำขอปัจจุบัน)
+  // สิทธิ์การลาพนักงาน (mock ที่เหลือ — จะ clear ตอนโหลด API)
   // ============================================================
-  const empQuota = {
+  const _empQuota_unused = {
     "EMP001": {
       sick:     { quota: 30, used: 5  },   // ลาป่วย
       business: { quota: 10, used: 3  },   // ลากิจ
@@ -739,10 +721,14 @@
         if (typeof apiGet === 'function') {
           Promise.all([
             apiGet({ action:'getLeaves' }),
-            apiGet({ action:'getEmployees' })
-          ]).then(([lRes, eRes]) => {
+            apiGet({ action:'getEmployees' }),
+            apiGet({ action:'getQuotas' }),
+            apiGet({ action:'getApprovers' })
+          ]).then(([lRes, eRes, qRes, aRes]) => {
             if (eRes.ok) eRes.data.forEach(e => { empDB[e.empId] = e; });
             if (lRes.ok) leaveRequests = lRes.data.map(x => buildLeaveObj(x));
+            _buildManagersFromAPI(aRes);
+            _buildEmpQuotaFromAPI(qRes);
           }).catch(()=>{}).finally(() => _afterLogin(currentManager));
         } else { _afterLogin(currentManager); }
       });
@@ -770,13 +756,17 @@
         levelName: lvl === 1 ? 'ผู้บังคับบัญชาขั้นต้น (L1)' : 'ผู้บังคับบัญชาขั้นสูง (L2)'
       };
 
-      // โหลดใบลา + ข้อมูลพนักงาน
-      const [lRes, eRes] = await Promise.all([
+      // โหลดใบลา + ข้อมูลพนักงาน + โควต้า + ผู้อนุมัติ
+      const [lRes, eRes, qRes, aRes] = await Promise.all([
         apiGet({ action: 'getLeaves' }),
-        apiGet({ action: 'getEmployees' })
+        apiGet({ action: 'getEmployees' }),
+        apiGet({ action: 'getQuotas' }),
+        apiGet({ action: 'getApprovers' })
       ]);
       if (eRes.ok) eRes.data.forEach(e => { empDB[e.empId] = e; });
       if (lRes.ok) leaveRequests = lRes.data.map(r => buildLeaveObj(r));
+      _buildManagersFromAPI(aRes);
+      _buildEmpQuotaFromAPI(qRes);
 
       document.getElementById('loginError').classList.remove('show');
       _afterLogin(currentManager);
@@ -784,6 +774,47 @@
       console.error(e);
       document.getElementById('loginError').classList.add('show');
     }
+  }
+
+  function _buildManagersFromAPI(aRes) {
+    Object.keys(managers).forEach(k => delete managers[k]);
+    if (!aRes || !aRes.ok || !aRes.data) return;
+    aRes.data.forEach(a => {
+      const mid = String(a.id || '').trim();
+      if (!mid) return;
+      const lvl = Number(a.level) || 1;
+      managers[mid] = {
+        name:      a.name     || '',
+        position:  a.position || '',
+        level:     lvl,
+        levelName: lvl === 1 ? 'ผู้บังคับบัญชาขั้นต้น' : 'ผู้บังคับบัญชาขั้นสูง',
+        mgrId:     mid
+      };
+    });
+  }
+
+  function _buildEmpQuotaFromAPI(qRes) {
+    Object.keys(empQuota).forEach(k => delete empQuota[k]);
+    if (!qRes || !qRes.ok || !qRes.data) return;
+    // build from quota sheet (entitlement เท่านั้น, used เริ่มที่ 0)
+    qRes.data.forEach(q => {
+      const eid = String(q.empId || '').trim();
+      if (!eid) return;
+      empQuota[eid] = {
+        sick:     { quota: Number(q.sickQuota)     || 30, used: 0 },
+        business: { quota: Number(q.businessQuota) || 10, used: 0 },
+        vacation: { quota: Number(q.vacationQuota) || 10, used: 0 }
+      };
+    });
+    // คำนวณ used จากใบลาที่ approved จริง
+    const typeKey = { 'ลาป่วย':'sick', 'ลากิจ':'business', 'ลาพักผ่อน':'vacation' };
+    leaveRequests.forEach(r => {
+      if (r.status !== 'approved') return;
+      const eid = r.emp && r.emp.id ? String(r.emp.id).trim() : '';
+      if (!empQuota[eid]) return;
+      const k = typeKey[r.leaveType];
+      if (k) empQuota[eid][k].used += (r.daysNum || Number(r.days) || 0);
+    });
   }
 
   function _afterLogin(mgr) {
@@ -834,7 +865,8 @@
       docs:         [],
       l1: { decision: x.l1Decision || null, by: x.l1AppId || null, date: x.l1ActionDate || null, comment: x.l1Comment || '' },
       l2: { decision: x.l2Decision || null, by: x.l2AppId || null, date: x.l2ActionDate || null, comment: x.l2Comment || '' },
-      attachmentUrl: x.attachmentUrl || ''
+      attachmentUrl: x.attachmentUrl || '',
+      adminNote: x.adminNote ? { reason: x.adminNote, detail: '' } : null
     };
   }
 

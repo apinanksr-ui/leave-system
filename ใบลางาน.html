@@ -859,16 +859,28 @@
         showAutoLoading();
         if (typeof apiGet !== 'function') { loadForm(); return; }
         Promise.all([
-          apiGet({ action:'getQuotas', empId: u.empId }),
+          apiGet({ action:'getQuotas',   empId: u.empId }),
+          apiGet({ action:'getLeaves',   empId: u.empId }),
           apiGet({ action:'getApprovers' })
-        ]).then(([q, a]) => {
+        ]).then(([q, lRes, a]) => {
           if (q.ok && q.data.length > 0) {
             const d = q.data[0];
             currentEmployee.leave = {
-              sick:     { quota: Number(d.sickQuota)||30,     used: Number(d.sickUsed)||0 },
-              business: { quota: Number(d.businessQuota)||10, used: Number(d.businessUsed)||0 },
-              vacation: { quota: Number(d.vacationQuota)||10, used: Number(d.vacationUsed)||0 }
+              sick:     { quota: Number(d.sickQuota)||30,     used: 0 },
+              business: { quota: Number(d.businessQuota)||10, used: 0 },
+              vacation: { quota: Number(d.vacationQuota)||10, used: 0 }
             };
+          }
+          // คำนวณ used จากใบลาที่ approved จริง
+          if (lRes.ok && lRes.data) {
+            const typeKey = { 'ลาป่วย':'sick', 'ลากิจ':'business', 'ลาพักผ่อน':'vacation' };
+            lRes.data.forEach(r => {
+              if (r.status !== 'approved') return;
+              const k = typeKey[r.leaveType];
+              if (k && currentEmployee.leave[k] !== undefined) {
+                currentEmployee.leave[k].used += (Number(r.days) || 0);
+              }
+            });
           }
           if (a.ok) {
             a.data.forEach(ap => { approverDB[ap.id] = { name: ap.name, position: ap.position }; });
@@ -906,19 +918,31 @@
         leave: {}
       };
 
-      // โหลดโควต้าการลา
-      const qRes = await apiGet({ action: 'getQuotas', empId: empId });
+      // โหลดโควต้า + ประวัติใบลา + ผู้อนุมัติ พร้อมกัน
+      const [qRes, lRes, aRes] = await Promise.all([
+        apiGet({ action: 'getQuotas',   empId: empId }),
+        apiGet({ action: 'getLeaves',   empId: empId }),
+        apiGet({ action: 'getApprovers' })
+      ]);
       if (qRes.ok && qRes.data.length > 0) {
         const q = qRes.data[0];
         currentEmployee.leave = {
-          sick:     { quota: Number(q.sickQuota)||30,     used: Number(q.sickUsed)||0     },
-          business: { quota: Number(q.businessQuota)||10, used: Number(q.businessUsed)||0 },
-          vacation: { quota: Number(q.vacationQuota)||10, used: Number(q.vacationUsed)||0 }
+          sick:     { quota: Number(q.sickQuota)||30,     used: 0 },
+          business: { quota: Number(q.businessQuota)||10, used: 0 },
+          vacation: { quota: Number(q.vacationQuota)||10, used: 0 }
         };
       }
-
-      // โหลดข้อมูลผู้อนุมัติ
-      const aRes = await apiGet({ action: 'getApprovers' });
+      // คำนวณ used จากใบลาที่ approved จริง (ไม่เชื่อค่าใน Sheet ที่ไม่ถูก update)
+      if (lRes.ok && lRes.data) {
+        const typeKey = { 'ลาป่วย':'sick', 'ลากิจ':'business', 'ลาพักผ่อน':'vacation' };
+        lRes.data.forEach(r => {
+          if (r.status !== 'approved') return;
+          const k = typeKey[r.leaveType];
+          if (k && currentEmployee.leave[k] !== undefined) {
+            currentEmployee.leave[k].used += (Number(r.days) || 0);
+          }
+        });
+      }
       if (aRes.ok) {
         aRes.data.forEach(a => { approverDB[a.id] = { name: a.name, position: a.position }; });
       }
@@ -953,10 +977,11 @@
 
   function renderApprovalChain(emp) {
     const box = document.getElementById('approvalChainDisplay');
-    const l2  = approverDB[emp.l2ApproverId];
+    if (!box) return;
+    const l2  = approverDB[emp.l2ApproverId] || { name: emp.l2ApproverId || '—', position: '' };
 
-    if (emp.approvalWorkflow === 'type1') {
-      const l1 = approverDB[emp.l1ApproverId];
+    if (emp.approvalWorkflow === 'type1' && emp.l1ApproverId) {
+      const l1 = approverDB[emp.l1ApproverId] || { name: emp.l1ApproverId || '—', position: '' };
       box.innerHTML = `
         <div class="approval-chain-box">
           <div class="chain-step">
@@ -980,7 +1005,7 @@
           </div>
           <span class="chain-tag-type1">2 ขั้นตอน</span>
         </div>`;
-    } else {
+    } else if (emp.l2ApproverId) {
       box.innerHTML = `
         <div class="approval-chain-box">
           <div class="chain-step">
@@ -994,6 +1019,9 @@
           </div>
           <span class="chain-tag-type2">1 ขั้นตอน</span>
         </div>`;
+    } else {
+      // ไม่มีผู้อนุมัติที่กำหนดไว้ (เช่น ผู้บริหารสูงสุด)
+      box.innerHTML = `<div style="color:#9aa5b4;font-size:13px;">— ไม่มีผู้อนุมัติที่กำหนด กรุณาติดต่อ HR —</div>`;
     }
   }
 
@@ -1004,8 +1032,10 @@
       { key: 'vacation', cls: 'vacation', icon: '🏖️', label: 'ลาพักผ่อน' },
     ];
     const grid = document.getElementById('leaveQuotaGrid');
+    if (!grid) return;
+    if (!leave) { grid.innerHTML = '<p style="color:#9aa5b4;font-size:13px;">ไม่พบข้อมูลโควต้า</p>'; return; }
     grid.innerHTML = types.map(t => {
-      const d = leave[t.key];
+      const d = leave[t.key] || { quota: 0, used: 0 };
       const remaining = d.quota - d.used;
       const pct = Math.min(100, Math.round((d.used / d.quota) * 100));
       const warnClass = remaining <= 2 ? 'warn' : '';
