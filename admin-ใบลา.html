@@ -957,7 +957,7 @@ function _buildManagersFromAPI(aRes) {
 }
 
 function _buildEmployeesFromAPI(eRes, qRes) {
-  // Build quota lookup
+  // Build quota lookup (สำหรับ entitlement เท่านั้น — ไม่ใช้ sickUsed จาก Sheet เพราะไม่ถูก update)
   const quotaMap = {};
   if (qRes && qRes.ok && qRes.data) {
     qRes.data.forEach(q => { quotaMap[String(q.empId || '').trim()] = q; });
@@ -979,11 +979,25 @@ function _buildEmployeesFromAPI(eRes, qRes) {
       l1ApproverId:     e.l1Id  || null,
       l2ApproverId:     e.l2Id  || null,
       quota: {
-        sick:     { quota: Number(q.sickQuota)     || 30, used: Number(q.sickUsed)     || 0 },
-        business: { quota: Number(q.businessQuota) || 10, used: Number(q.businessUsed) || 0 },
-        vacation: { quota: Number(q.vacationQuota) || 10, used: Number(q.vacationUsed) || 0 }
+        // used เริ่มต้นที่ 0 — จะคำนวณใหม่จาก leaveRequests ด้านล่าง
+        sick:     { quota: Number(q.sickQuota)     || 30, used: 0 },
+        business: { quota: Number(q.businessQuota) || 10, used: 0 },
+        vacation: { quota: Number(q.vacationQuota) || 10, used: 0 }
       }
     };
+  });
+
+  // คำนวณ used จากใบลาที่ approved จริง (แทนการอ่านจาก Sheet ที่ไม่ถูก update)
+  const leaveTypeKey = { 'ลาป่วย': 'sick', 'ลากิจ': 'business', 'ลาพักผ่อน': 'vacation' };
+  leaveRequests.forEach(lr => {
+    if (lr.status !== 'approved') return;
+    const eid = String((lr.emp && lr.emp.id) || '').trim();
+    const emp = employees[eid];
+    if (!emp || !emp.quota) return;
+    const key = leaveTypeKey[lr.leaveType];
+    if (key && emp.quota[key] !== undefined) {
+      emp.quota[key].used += (Number(lr.daysNum) || Number(lr.days) || 0);
+    }
   });
 }
 
@@ -1286,7 +1300,7 @@ function renderPendingQueue() {
             <div class="pc-id">${r.id} · ยื่น ${r.submitDate}</div>
             <div class="pc-name">${r.emp.title}${r.emp.name}</div>
             <div class="pc-detail">
-              ${r.leaveType} · ${r.duration} (${r.startDate}) · ${r.emp.department}
+              ${r.leaveType} · ${r.duration || ((r.days||r.daysNum||1) + ' วัน')} (${r.startDate}) · ${r.emp.department || r.emp.dept || ''}
               ${overQuota ? `&nbsp;<strong style="color:#ef4444;">⚠️ เกินโควต้า!</strong>` : ''}
             </div>
             <div class="pc-waiting">
@@ -1352,7 +1366,7 @@ function renderEmpDetail() {
       <td style="font-weight:700;color:#4f46e5;">${r.id}</td>
       <td>${r.submitDate}</td>
       <td>${r.leaveType}</td>
-      <td>${r.duration}</td>
+      <td>${r.duration || ((r.days||r.daysNum||1) + ' วัน')}</td>
       <td>${r.startDate}</td>
       <td>${statusBadge}</td>
       <td>${r.l2.by || r.l1.by || '—'}</td>
@@ -1421,7 +1435,7 @@ function openContest(id) {
     <table>
       <tr><td>เลขที่ใบลา</td><td><strong>${r.id}</strong></td></tr>
       <tr><td>พนักงาน</td><td><strong>${r.emp.title}${r.emp.name}</strong> (${r.emp.id})</td></tr>
-      <tr><td>ประเภทลา</td><td>${r.leaveType} · ${r.duration}</td></tr>
+      <tr><td>ประเภทลา</td><td>${r.leaveType} · ${r.duration || ((r.days||r.daysNum||1) + ' วัน')}</td></tr>
       <tr><td>อนุมัติโดย</td><td>${r.l2.by || r.l1.by || '—'} เมื่อ ${r.l2.date || r.l1.date || '—'}</td></tr>
       <tr><td>โควต้า</td><td>${q ? `ใช้ไป ${q.used}/${q.quota} วัน (เหลือ ${remaining} วัน)` : '—'}${overWarn}</td></tr>
     </table>`;
