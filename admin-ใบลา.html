@@ -694,35 +694,11 @@ const adminDB = {
   "ADMIN01": { password: "admin1234", name: "ปิยนาถ ระบบดี", role: "ผู้ดูแลระบบ" }
 };
 
-const managers = {
-  "MGR001": { name: "ธนากร สุขสม",   position: "ผู้จัดการฝ่ายวิศวกรรม", level: 1, mgrId: "MGR001" },
-  "MGR002": { name: "ธัญญา สร้างดี", position: "ผู้จัดการฝ่ายออกแบบ",   level: 1, mgrId: "MGR002" },
-  "MGR003": { name: "จิตรา มั่นคง",  position: "กรรมการผู้จัดการ",       level: 2, mgrId: "MGR003" },
-};
-
-const employees = {
-  "EMP001": {
-    title: "นาย", name: "สมชาย ใจดี",
-    position: "วิศวกรโยธา", department: "ฝ่ายวิศวกรรม", unit: "โครงการ A",
-    approvalWorkflow: "type1", l1ApproverId: "MGR001", l2ApproverId: "MGR003",
-    quota: { sick: { quota: 30, used: 8 }, business: { quota: 10, used: 5 }, vacation: { quota: 10, used: 2 } }
-  },
-  "EMP002": {
-    title: "นางสาว", name: "สุดา มีสุข",
-    position: "สถาปนิก", department: "ฝ่ายออกแบบ", unit: "สำนักงาน",
-    approvalWorkflow: "type1", l1ApproverId: "MGR002", l2ApproverId: "MGR003",
-    quota: { sick: { quota: 30, used: 28 }, business: { quota: 10, used: 9 }, vacation: { quota: 10, used: 6 } }
-  },
-  "EMP003": {
-    title: "นาง", name: "วิภา รักงาน",
-    position: "ผู้จัดการโครงการ", department: "ฝ่ายบริหาร", unit: "โครงการ B",
-    approvalWorkflow: "type2", l1ApproverId: null, l2ApproverId: "MGR003",
-    quota: { sick: { quota: 30, used: 2 }, business: { quota: 15, used: 13 }, vacation: { quota: 15, used: 12 } }
-  },
-};
+const managers  = {};   // โหลดจาก getApprovers API
+const employees = {};   // โหลดจาก getEmployees + getQuotas API
 
 // วันยื่น (ใช้คำนวณวันค้าง)
-const TODAY_STR = "2026-03-13";
+const TODAY_STR = new Date().toISOString().slice(0, 10);
 function daysPending(submitIso) {
   const sub = new Date(submitIso);
   const now = new Date(TODAY_STR);
@@ -873,7 +849,12 @@ let contestTargetId = null;
       currentAdmin = { id: u.empId, name: u.name || '', email: u.email || '', role: u.role };
       window.addEventListener('DOMContentLoaded', () => {
         if (typeof apiGet === 'function') {
-          Promise.all([apiGet({action:'getLeaves'}), apiGet({action:'getEmployees'})]).then(([lRes]) => {
+          Promise.all([
+            apiGet({action:'getLeaves'}),
+            apiGet({action:'getEmployees'}),
+            apiGet({action:'getQuotas'}),
+            apiGet({action:'getApprovers'})
+          ]).then(([lRes, eRes, qRes, aRes]) => {
             if (lRes.ok) leaveRequests = lRes.data.map(x => ({
               id: x.leaveId, status: x.status || 'pending_l1',
               submitDate: x.submitDate, submitIso: x.startDate,
@@ -889,6 +870,8 @@ let contestTargetId = null;
               l2: { decision: x.l2Decision||null, by: x.l2AppId||null, date: x.l2ActionDate||null, comment: x.l2Comment||'' },
               attachmentUrl: x.attachmentUrl||''
             }));
+            _buildManagersFromAPI(aRes);
+            _buildEmployeesFromAPI(eRes, qRes);
           }).catch(()=>{}).finally(() => _afterAdminLogin(currentAdmin));
         } else { _afterAdminLogin(currentAdmin); }
       });
@@ -908,9 +891,11 @@ let contestTargetId = null;
     currentAdmin = { id: u.empId, name: u.name, email: u.email, role: u.role };
 
     // โหลดข้อมูลทั้งหมด
-    const [lRes, eRes] = await Promise.all([
+    const [lRes, eRes, qRes, aRes] = await Promise.all([
       apiGet({ action: 'getLeaves' }),
-      apiGet({ action: 'getEmployees' })
+      apiGet({ action: 'getEmployees' }),
+      apiGet({ action: 'getQuotas' }),
+      apiGet({ action: 'getApprovers' })
     ]);
     if (lRes.ok) {
       leaveRequests = lRes.data.map(r => ({
@@ -929,6 +914,8 @@ let contestTargetId = null;
         attachmentUrl: r.attachmentUrl||''
       }));
     }
+    _buildManagersFromAPI(aRes);
+    _buildEmployeesFromAPI(eRes, qRes);
 
     document.getElementById('loginError').classList.remove('show');
     _afterAdminLogin(currentAdmin);
@@ -952,11 +939,61 @@ function doLogout() {
 }
 
 // ============================================================
+// HELPERS — Build employees & managers from API data
+// ============================================================
+function _buildManagersFromAPI(aRes) {
+  Object.keys(managers).forEach(k => delete managers[k]);
+  if (!aRes || !aRes.ok || !aRes.data) return;
+  aRes.data.forEach(a => {
+    const mid = String(a.id || '').trim();
+    if (!mid) return;
+    managers[mid] = {
+      name:     a.name     || '',
+      position: a.position || '',
+      level:    Number(a.level) || 1,
+      mgrId:    mid
+    };
+  });
+}
+
+function _buildEmployeesFromAPI(eRes, qRes) {
+  // Build quota lookup
+  const quotaMap = {};
+  if (qRes && qRes.ok && qRes.data) {
+    qRes.data.forEach(q => { quotaMap[String(q.empId || '').trim()] = q; });
+  }
+  // Rebuild employees
+  Object.keys(employees).forEach(k => delete employees[k]);
+  if (!eRes || !eRes.ok || !eRes.data) return;
+  eRes.data.forEach(e => {
+    const eid = String(e.empId || '').trim();
+    if (!eid) return;
+    const q = quotaMap[eid] || {};
+    employees[eid] = {
+      title:            e.title    || '',
+      name:             e.name     || '',
+      position:         e.position || '',
+      department:       e.dept     || '',
+      unit:             e.section  || '',
+      approvalWorkflow: e.l1Id ? 'type1' : 'type2',
+      l1ApproverId:     e.l1Id  || null,
+      l2ApproverId:     e.l2Id  || null,
+      quota: {
+        sick:     { quota: Number(q.sickQuota)     || 30, used: Number(q.sickUsed)     || 0 },
+        business: { quota: Number(q.businessQuota) || 10, used: Number(q.businessUsed) || 0 },
+        vacation: { quota: Number(q.vacationQuota) || 10, used: Number(q.vacationUsed) || 0 }
+      }
+    };
+  });
+}
+
+// ============================================================
 // INIT
 // ============================================================
 function initApp() {
-  // populate emp select
+  // populate emp select — ล้างรายการเก่าก่อน (เหลือแค่ placeholder)
   const sel = document.getElementById('empSelect');
+  while (sel.options.length > 1) sel.remove(1);
   Object.entries(employees).forEach(([id, e]) => {
     const opt = document.createElement('option');
     opt.value = id;
@@ -1184,10 +1221,11 @@ function renderAllRequests() {
 }
 
 function buildQuotaMini(emp, r) {
-  if (!emp) return '-';
+  if (!emp || !emp.quota) return '-';
   const key = { 'ลาป่วย': 'sick', 'ลากิจ': 'business', 'ลาพักผ่อน': 'vacation' }[r.leaveType];
   if (!key) return '-';
   const q = emp.quota[key];
+  if (!q) return '-';
   const remaining = q.quota - q.used;
   const over = r.daysNum > remaining;
   const cls  = over ? 'over' : remaining <= 2 ? 'warn' : '';
@@ -1597,6 +1635,15 @@ function submitContest() {
   if (!r) return;
   r.status    = 'contested';
   r.adminNote = { reason, detail, contestedBy: currentAdmin.name, contestedDate: TODAY_STR };
+
+  // ── บันทึกลง Google Sheet ──
+  const noteStr = reason + (detail ? ' — ' + detail : '');
+  apiPost({ action: 'updateLeave', leaveId: r.id, data: {
+    status: 'contested',
+    adminNote: noteStr
+  }}).then(res => {
+    if (!res.ok) console.error('contestSave failed:', res.error);
+  }).catch(e => console.error('contestSave error:', e));
 
   closeModal();
   renderDashboard();

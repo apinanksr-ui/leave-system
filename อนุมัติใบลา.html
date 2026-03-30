@@ -853,17 +853,18 @@
       const hasAny = hasL1 || hasL2;
 
       if (level === 2) {
-        // L2 อนุมัติขั้นสูง: เห็นใบที่รอ L2 อนุมัติ
         if (r.status === 'pending_l2') return true;
-        // L2: เห็นใบที่ตัวเองเคยดำเนินการแล้ว (l2ApproverId ตรง)
+        // ใบโต้แย้ง: L2 รับผิดชอบพิจารณาใหม่เสมอ
+        if (r.status === 'contested') return true;
         if (hasL2 && r.l2ApproverId === mgrId) return true;
-        // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
         if (!hasAny) return true;
         return false;
       }
 
-      // L1: แสดงเฉพาะใบที่ตัวเองเป็น l1ApproverId
-      if (!hasAny) return true; // ข้อมูลเก่าไม่มี approver → แสดงทุกคน
+      // L1
+      // ใบโต้แย้ง: L1 เห็นเฉพาะใบที่ตัวเองเป็น l1ApproverId
+      if (r.status === 'contested' && hasL1 && r.l1ApproverId === mgrId) return true;
+      if (!hasAny) return true;
       return r.l1ApproverId === mgrId;
     });
   }
@@ -872,9 +873,9 @@
   function getMyQueue() {
     const myLeaves = getMyLeaves();
     if (currentManager.level === 1) {
-      return myLeaves.filter(r => r.status === 'pending_l1');
+      return myLeaves.filter(r => r.status === 'pending_l1' || r.status === 'contested');
     } else {
-      return myLeaves.filter(r => r.status === 'pending_l2');
+      return myLeaves.filter(r => r.status === 'pending_l2' || r.status === 'contested');
     }
   }
 
@@ -1081,6 +1082,7 @@
     pending_l2: '🔹 รอขั้นสูงอนุมัติ',
     approved:   '✅ อนุมัติสมบูรณ์',
     rejected:   '❌ ไม่อนุมัติ',
+    contested:  '🟣 Admin โต้แย้ง',
   };
   const badgeClass = {
     pending:    'badge-pending-l1',
@@ -1088,6 +1090,7 @@
     pending_l2: 'badge-pending-l2',
     approved:   'badge-approved',
     rejected:   'badge-rejected',
+    contested:  'badge-pending-l2',
   };
 
   function buildCard(r) {
@@ -1169,11 +1172,23 @@
         </div>
       </div>`;
 
+    // ---------- Admin-contest banner ----------
+    const contestBanner = r.status === 'contested' && r.adminNote
+      ? `<div style="background:#fdf4ff;border:1.5px solid #c084fc;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
+          <strong style="color:#7c3aed;">🟣 Admin โต้แย้งการอนุมัตินี้</strong><br>
+          <span style="color:#6b7280;">เหตุผล: ${r.adminNote.reason || r.adminNote}</span>
+          ${(r.adminNote.detail) ? `<br><span style="color:#9aa5b4;">${r.adminNote.detail}</span>` : ''}
+        </div>` : '';
+
     // ---------- Action area ----------
     let actionHtml = '';
-    // manager สามารถอนุมัติทุกรายการในระดับของตน
+    // manager สามารถอนุมัติทุกรายการในระดับของตน รวมถึงใบโต้แย้ง
     const canAct = (r.status === 'pending_l1' && currentManager.level === 1) ||
-                   (r.status === 'pending_l2' && currentManager.level === 2);
+                   (r.status === 'pending_l2' && currentManager.level === 2) ||
+                   (r.status === 'contested' && (
+                     (currentManager.level === 1 && r.l1ApproverId === currentManager.id) ||
+                     (currentManager.level === 2)
+                   ));
 
     if (canAct) {
       if (currentManager.level === 1) {
@@ -1266,6 +1281,7 @@
         <div class="detail-row"><span class="detail-label">วันที่ลา</span><span class="detail-value">${r.startDate || '-'}${(r.endDate && r.startDate !== r.endDate) ? ` — ${r.endDate}` : ''} (${r.daysNum || r.days || 1} วัน)</span></div>
         <div class="detail-row"><span class="detail-label">เอกสารแนบ</span><span class="detail-value">${(r.attachmentUrl && r.attachmentUrl.startsWith('http')) ? `<a href="${r.attachmentUrl}" target="_blank">📎 ดูไฟล์แนบ</a>` : 'ไม่มี'}</span></div>
         ${r.reason ? `<div class="detail-row" style="flex-direction:column;gap:6px;"><span class="detail-label">สาเหตุการลา</span><div class="reason-box">${r.reason}</div></div>` : ''}
+        ${contestBanner}
         ${quotaHtml}
         ${approvalChain}
         ${actionHtml}
@@ -1331,11 +1347,14 @@
     req[levelKey] = { decision, by: currentManager.name, date: todayStr, comment };
 
     // Update overall status
+    // ถ้าเป็นใบ contested: L1 re-decide → pending_l2, L2 re-decide → approved/rejected
     if (currentManager.level === 1) {
       req.status = decision === 'approved' ? 'pending_l2' : 'rejected';
     } else {
       req.status = decision === 'approved' ? 'approved' : 'rejected';
     }
+    // เคลียร์ adminNote เมื่อมีการพิจารณาใหม่แล้ว
+    if (req.adminNote) req.adminNote = null;
 
     // ── อัพเดต card ทันที (feedback ก่อน API กลับมา) ──
     try {
