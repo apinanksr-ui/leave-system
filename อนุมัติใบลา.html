@@ -907,7 +907,12 @@
     if (currentManager.level === 1) {
       return myLeaves.filter(r => r.status === 'pending_l1' || r.status === 'contested');
     } else {
-      return myLeaves.filter(r => r.status === 'pending_l2' || r.status === 'contested');
+      // L2 เห็น pending_l2 + contested + pending_l1 ที่ไม่มี L1 approver (type2 workflow)
+      return myLeaves.filter(r =>
+        r.status === 'pending_l2' ||
+        r.status === 'contested'  ||
+        (r.status === 'pending_l1' && (!r.l1ApproverId || r.l1ApproverId === ''))
+      );
     }
   }
 
@@ -1215,8 +1220,11 @@
     // ---------- Action area ----------
     let actionHtml = '';
     // manager สามารถอนุมัติทุกรายการในระดับของตน รวมถึงใบโต้แย้ง
+    const isType2NoL1 = (!r.l1ApproverId || r.l1ApproverId === ''); // type2: ไม่มี L1
     const canAct = (r.status === 'pending_l1' && currentManager.level === 1) ||
                    (r.status === 'pending_l2' && currentManager.level === 2) ||
+                   // type2 workflow ที่ยังติด pending_l1 (legacy) → L2 อนุมัติได้เลย
+                   (r.status === 'pending_l1' && currentManager.level === 2 && isType2NoL1) ||
                    (r.status === 'contested' && (
                      (currentManager.level === 1 && r.l1ApproverId === currentManager.id) ||
                      (currentManager.level === 2)

@@ -42,26 +42,45 @@ var COL_MAP_EMP = {
 };
 
 var COL_MAP_LEAVE = {
+  // ── leaveId ──
   'รหัสใบลา':            'leaveId',
-  'เลขที่ใบลา':          'leaveId',   // ชื่อทางเลือกใน Sheet
+  'เลขที่ใบลา':          'leaveId',
+  // ── employee ──
   'รหัสพนักงาน':         'empId',
   'ชื่อพนักงาน':         'empName',
+  'ชื่อ-นามสกุล':        'empName',
   'ฝ่าย':                'dept',
+  'แผนก':                'dept',
   'ตำแหน่ง':             'position',
+  // ── leave details ──
   'ประเภทการลา':         'leaveType',
   'วันที่เริ่มต้น':      'startDate',
-  'วันที่เริ่มลา':       'startDate',  // ชื่อทางเลือกใน Sheet
+  'วันที่เริ่มลา':       'startDate',
   'วันที่สิ้นสุด':       'endDate',
+  'วันที่ลาสิ้นสุด':     'endDate',
   'จำนวนวัน':            'days',
   'เหตุผล':              'reason',
+  'หมายเหตุ':            'reason',
+  // ── status / date ──
   'สถานะ':               'status',
   'วันที่ยื่น':          'submitDate',
+  // ── approver L1 ──
   'รหัสผู้อนุมัติ L1':   'l1AppId',
-  'รหัสผู้อนุมัติ L2':   'l2AppId',
+  'ผู้อนุมัติ L1':       'l1AppId',
+  'วันที่ L1 ดำเนินการ': 'l1ActionDate',
+  'ผล L1':               'l1Decision',
   'ผลการพิจารณา L1':     'l1Decision',
-  'ผลการพิจารณา L2':     'l2Decision',
   'ความเห็น L1':         'l1Comment',
+  // ── approver L2 ──
+  'รหัสผู้อนุมัติ L2':   'l2AppId',
+  'ผู้อนุมัติ L2':       'l2AppId',
+  'วันที่ L2 ดำเนินการ': 'l2ActionDate',
+  'ผล L2':               'l2Decision',
+  'ผลการพิจารณา L2':     'l2Decision',
   'ความเห็น L2':         'l2Comment',
+  // ── admin / attachment ──
+  'หมายเหตุ Admin':      'adminNote',
+  'วันที่โต้แย้ง':       'disputeDate',
   'ไฟล์แนบ':             'attachmentUrl'
 };
 
@@ -297,7 +316,8 @@ function submitLeave(obj) {
   // สร้าง leaveId อัตโนมัติ
   obj.leaveId    = 'LV' + String(Date.now()).slice(-6);
   obj.submitDate = new Date().toLocaleDateString('th-TH');
-  obj.status     = 'pending_l1';
+  // ถ้ามี L1 approver → รอ L1 ก่อน  ถ้าไม่มี (type2) → ข้ามไป pending_l2 เลย
+  obj.status     = (obj.l1AppId && String(obj.l1AppId).trim() !== '') ? 'pending_l1' : 'pending_l2';
   obj.l1Decision = '';
   obj.l2Decision = '';
   obj.l1Comment  = '';
@@ -335,19 +355,29 @@ function submitLeave(obj) {
 function updateLeave(leaveId, obj) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var sh   = ss.getSheetByName(SHEET_LEAVE);
+  if (!sh) return { ok: false, error: 'ไม่พบ Sheet: ' + SHEET_LEAVE };
+
   var info = findHeaderRow(sh, COL_MAP_LEAVE);
   var IDX  = info.normalizedHdr.indexOf('leaveId');
+  Logger.log('updateLeave: leaveId=' + leaveId + ' IDX=' + IDX + ' rows=' + info.all.length);
+
+  if (IDX === -1) return { ok: false, error: 'ไม่พบคอลัมน์ leaveId ใน Sheet' };
 
   for (var i = info.headerRowIdx + 1; i < info.all.length; i++) {
-    if (String(info.all[i][IDX]).trim() === String(leaveId).trim()) {
+    var cellVal = String(info.all[i][IDX]).trim();
+    Logger.log('row ' + (i+1) + ': ' + cellVal);
+    if (cellVal === String(leaveId).trim()) {
       info.normalizedHdr.forEach(function(key, c) {
         if (obj[key] !== undefined) {
           sh.getRange(i + 1, c + 1).setValue(obj[key]);
         }
       });
+      SpreadsheetApp.flush();
+      Logger.log('updateLeave: updated row ' + (i+1));
       return { ok: true, message: 'อัปเดตใบลาเรียบร้อย' };
     }
   }
+  Logger.log('updateLeave: NOT FOUND ' + leaveId);
   return { ok: false, error: 'ไม่พบใบลา ID: ' + leaveId };
 }
 
