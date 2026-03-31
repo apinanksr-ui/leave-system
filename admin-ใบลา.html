@@ -699,8 +699,22 @@ const employees = {};   // โหลดจาก getEmployees + getQuotas API
 
 // วันยื่น (ใช้คำนวณวันค้าง)
 const TODAY_STR = new Date().toISOString().slice(0, 10);
+// แปลงวันที่ไทย พ.ศ. รูปแบบ "DD/MM/YYYY" → JavaScript Date (ค.ศ.)
+function parseThaiBEDate(str) {
+  if (!str) return new Date(NaN);
+  const s = String(str).trim();
+  const parts = s.split('/');
+  if (parts.length === 3) {
+    const d = parseInt(parts[0]);
+    const m = parseInt(parts[1]) - 1;
+    const y = parseInt(parts[2]);
+    return new Date(y > 2500 ? y - 543 : y, m, d);
+  }
+  return new Date(str);
+}
+
 function daysPending(submitIso) {
-  const sub = new Date(submitIso);
+  const sub = parseThaiBEDate(submitIso);
   const now = new Date(TODAY_STR);
   return Math.max(0, Math.round((now - sub) / 86400000));
 }
@@ -1482,15 +1496,18 @@ function getFilteredRequests() {
     const m = parseInt(document.getElementById('prMonth').value);
     const y = parseInt(document.getElementById('prMonthYear').value);
     filtered = filtered.filter(r => {
-      const d = new Date(r.submitIso);
-      return d.getFullYear() === y && (d.getMonth() + 1) === m;
+      const d = parseThaiBEDate(r.submitIso || r.startDate);
+      return !isNaN(d) && d.getFullYear() === y && (d.getMonth() + 1) === m;
     });
   } else if (type === 'year') {
     const y = parseInt(document.getElementById('prYear').value);
-    filtered = filtered.filter(r => new Date(r.submitIso).getFullYear() === y);
+    filtered = filtered.filter(r => {
+      const d = parseThaiBEDate(r.submitIso || r.startDate);
+      return !isNaN(d) && d.getFullYear() === y;
+    });
   } else if (type === 'person') {
     const pid = document.getElementById('prPerson').value;
-    if (pid) filtered = filtered.filter(r => r.emp === pid);
+    if (pid) filtered = filtered.filter(r => (r.emp && r.emp.id ? r.emp.id : r.emp) === pid);
   }
   return filtered;
 }
@@ -1546,8 +1563,9 @@ function buildPrintPreview() {
 
   // Build main table rows
   const tableRows = rows.map(r => {
-    const emp = employees[r.emp];
-    const empName = emp ? emp.name : r.emp;
+    const empId2 = r.emp && r.emp.id ? r.emp.id : r.emp;
+    const emp = employees[empId2];
+    const empName = emp ? emp.name : (r.emp && r.emp.name ? r.emp.name : empId2);
     const dept    = emp ? (emp.section || emp.dept || '—') : '—';
     const lType   = leaveTypeLabel[r.leaveType] || r.leaveType;
     const status  = statusLabel[r.status] || r.status;
@@ -1665,8 +1683,9 @@ function submitContest() {
   renderPendingQueue();
 
   // Mock email: notify employee
-  const empData = employees[r.emp];
-  const empName = empData ? empData.name : r.emp;
+  const _empId = r.emp && r.emp.id ? r.emp.id : r.emp;
+  const empData = employees[_empId];
+  const empName = empData ? empData.name : (r.emp && r.emp.name ? r.emp.name : _empId);
   const empEmail = empName.toLowerCase().replace(/\s/g,'') + '@planconsultants.co.th';
   showEmailToast(
     empName, empEmail,
